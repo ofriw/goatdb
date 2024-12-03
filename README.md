@@ -10,8 +10,10 @@ We're working hard on getting ready for a v0.1 launch. We expect it to happen in
 
 # Docs
 
-[Architecture Overview](https://github.com/ofriw/goatdb/blob/main/docs/architecture.md)
+[Architecture Overview](/docs/architecture.md)
 
-[Conflict Resolution](https://github.com/ofriw/goatdb/blob/main/docs/conflict-resolution.md)
+[Conflict Resolution](/docs/conflict-resolution.md)
 
-[Synchronization Protocol](https://github.com/ofriw/goatdb/blob/main/docs/sync.md)
+[Synchronization Protocol](/docs/sync.md)
+
+[Security](/docs/security.md)
