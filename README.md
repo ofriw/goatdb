@@ -1,4 +1,9 @@
-# GoatDB
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/042011b9-4e06-45f5-b3fb-53f6b0fe9981">
+  <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/5c8a5aec-b44a-4aa2-8d15-572eb2ff1486">
+  <img alt="Shows an illustrated sun in light mode and a moon with stars in dark mode." src="https://github.com/user-attachments/assets/042011b9-4e06-45f5-b3fb-53f6b0fe9981">
+</picture>
 
 GoatDB is the world's first database built like a distributed version control system. Think git, but for your app's data, that synchronizes in realtime and resolves merges automatically.
 
