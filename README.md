@@ -1,8 +1,8 @@
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/042011b9-4e06-45f5-b3fb-53f6b0fe9981">
-  <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/5c8a5aec-b44a-4aa2-8d15-572eb2ff1486">
-  <img alt="Shows an illustrated sun in light mode and a moon with stars in dark mode." src="https://github.com/user-attachments/assets/042011b9-4e06-45f5-b3fb-53f6b0fe9981">
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/4975e49c-e73c-435e-8e10-97adc2c0aaeb">
+  <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/270caf47-3ed8-49d4-b3b9-74a51bd2d6c0">
+  <img alt="GoatDB Logo" src="https://github.com/user-attachments/assets/270caf47-3ed8-49d4-b3b9-74a51bd2d6c0">
 </picture>
 
 ---
