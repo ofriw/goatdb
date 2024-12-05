@@ -6,7 +6,7 @@ When a node joins the GoatDB network, it first authenticates with the central se
 
 After downloading the initial history, the edge node will try to maintain soft realtime synchronization with the server. Up to 3 times a second, the node will capture its current in-memory state, pack it into a commit representation, and append it to the underlying append-only commit graph. Concurrently a synchronization process copies over all missing commits between the local copy of the graph and the remote copy on the server. Conceptually, think how multiple developers read and edit their local copies on their own machines, then sync with the central server on github. It's the same except in realtime and for your app's data.
 
-In order to really be able to commit and sync in realtime, GoatDB must be able to resolve merge conflicts automatically in an efficient enough way. Read more about [Conflict Resolution](./conflict-resolution.md).
+In order to really be able to commit and sync in realtime, GoatDB must be able to resolve merge conflicts automatically and efficiently. Read more about [Conflict Resolution](./conflict-resolution.md).
 
 GoatDB also employs a probabilistic synchronization protocol based on exchanging Bloom Filters in realtime. Read more about it [here](./sync.md).
 
@@ -16,13 +16,13 @@ GoatDB is designed to run on servers, native clients, and inside the browser. Di
 
 ## Build
 
-From your first line of code, GoatDB hides the vast majority of network logic and handling with its realtime synchronization, so there's no need to build and maintain APIs. Instead, you get to work with an in-memory representation that's totally synchronous and lives on the client's side. What gets sent over the wire are batches of delta compressed commits which actually ends up more efficient that your typical run-of-the-mill REST API.
+From your first line of code, GoatDB hides the vast majority of network logic and handling behind its realtime synchronization, so there's no need to build and maintain APIs. Instead, you get to work with an in-memory representation that's totally synchronous and lives on the client's side. What gets sent over the wire are batches of delta compressed commits which actually ends up more efficient that your typical run-of-the-mill REST API.
 
-And if you're using React, you actually get a full state management solution that's already wired down to the DB level. You get to read, edit and query in-memory items, while in the background GoatDB commits and merges changes in real time all while communicating rerendering efficiently and conveniently using modern react hooks.
+And if you're using React, you actually get a full state management package that's already wired down to the DB level. You get to read, edit and query in-memory items, while in the background GoatDB commits and merges changes in real time all while orchestrating re-rendering efficiently and conveniently using modern react hooks.
 
 ## Deploy
 
-When the time comes to deploy your app to the cloud, GoatDB allows you to radically simplify your deployment. We pack the embedded DB alongside your code and static assets and compile them into a single executable that acts as a lightweight container. The result is that your entire stack is compressed into a single executable that you can simply stick on any common server either on-prem or in your favorite cloud.
+When the time comes to deploy your app to the cloud, GoatDB enables you to radically simplify your deployment. We pack the embedded DB alongside your code and static assets and compile them into a single executable that acts as a lightweight container. The result is that your entire stack is compressed into a single executable that you can simply stick on any common server in your favorite cloud or even in an on-prem deployment.
 
 If you mostly care about this ability but wish to work with a standard SQL DB, check out the awesome [PocketBase](https://pocketbase.io/).
 
@@ -52,7 +52,7 @@ Single tenant deployment becomes a breeze, while some regulations can be complet
 
 We're also planning on adding E2E encryption so the server only moves opaque commits between clients. Combined with sync over WebRTC, this will offer truly a new category of security and privacy.
 
-## Migrations and Data Warehouses
+## Migration and Data Warehouse
 
 GoatDB makes it super easy to deploy new versions of your app. GoatDB applies version control both to the data and the scheme so when a new scheme version is deployed, it'll coexist on its own branch alongside the previous versions. GoatDB will then perform one-way merges so the branch of the new scheme sees changes from the old scheme, but not the other way around. This enables sane Red/Black rolling deployments, and if something goes wrong you can simply revert the changes.
 
