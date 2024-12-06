@@ -7,7 +7,7 @@ import { md51 } from '../external/md5.ts';
 import { Scheme } from '../cfds/base/scheme.ts';
 import { BloomFilter } from '../base/bloom.ts';
 import { GoatDB } from '../db/db.ts';
-import { ReadonlyJSONArray, ReadonlyJSONValue } from '../base/interfaces.ts';
+import { ReadonlyJSONValue } from '../base/interfaces.ts';
 
 const BLOOM_FPR = 0.01;
 
@@ -46,11 +46,11 @@ export type QueryConfig<
 > = {
   db: GoatDB;
   source: QuerySource<IS, OS>;
-  predicate: Predicate<IS, CTX>;
+  predicate?: Predicate<IS, CTX>;
   sortDescriptor?: SortDescriptor<OS, CTX>;
   scheme?: IS;
   id?: string;
-  ctx: CTX;
+  ctx?: CTX;
 };
 
 export type QueryEvent = EventDocumentChanged | 'LoadingFinished' | 'Closed';
@@ -81,7 +81,8 @@ export class Query<
   private _age = 0;
   private _sourceListenerCleanup?: () => void;
   private _closed = false;
-  private _cachedResults: [string, Item<OS>][] | undefined;
+  private _cachedResults: { key: string; item: Item<OS> }[] | undefined;
+  private _cachedResultsAge = 0;
 
   // static open<
   //   IS extends Scheme = Scheme,
@@ -113,8 +114,11 @@ export class Query<
   }: QueryConfig<IS, OS, CTX>) {
     super();
     this.db = db;
+    if (!predicate) {
+      predicate = () => true;
+    }
     this.id = id || generateQueryId(predicate, sortDescriptor, ctx, scheme?.ns);
-    this.context = ctx;
+    this.context = ctx as CTX;
     this.source = source;
     this.scheme = scheme;
     this.predicate = predicate;
@@ -165,27 +169,28 @@ export class Query<
     return this._includedKeys;
   }
 
-  results(): readonly [string, Item<OS>][] {
-    if (!this._cachedResults) {
+  results(): readonly { key: string; item: Item<OS> }[] {
+    if (!this._cachedResults || this._cachedResultsAge !== this.age) {
       this._cachedResults = [];
+      this._cachedResultsAge = this.age;
       for (const k of this._includedKeys) {
-        this._cachedResults.push([k, this.valueForKey(k)]);
+        this._cachedResults.push({ key: k, item: this.valueForKey(k) });
       }
       if (this.sortDescriptor) {
         this._cachedResults.sort((e1, e2) => {
           if (!this._sortInfo) {
             this._sortInfo = {
-              keyLeft: e1[0],
-              left: e1[1],
-              keyRight: e2[0],
-              right: e2[1],
+              keyLeft: e1.key,
+              left: e1.item,
+              keyRight: e2.key,
+              right: e2.item,
               ctx: this.context,
             };
           } else {
-            this._sortInfo.keyLeft = e1[0];
-            this._sortInfo.left = e1[1];
-            this._sortInfo.keyRight = e2[0];
-            this._sortInfo.right = e2[1];
+            this._sortInfo.keyLeft = e1.key;
+            this._sortInfo.left = e1.item;
+            this._sortInfo.keyRight = e2.key;
+            this._sortInfo.right = e2.item;
             this._sortInfo.ctx = this.context;
           }
           return this.sortDescriptor!(this._sortInfo);
@@ -247,7 +252,9 @@ export class Query<
           (typeof this.source === 'string'
             ? this.repo
             : this.source) as Emitter<EventDocumentChanged>
-        ).attach('DocumentChanged', (c: Commit) => this.onNewCommit(c));
+        ).attach('DocumentChanged', (key: string) =>
+          this.onNewCommit(this.repo.headForKey(key)!),
+        );
       }
     }
   }
@@ -351,6 +358,7 @@ export class Query<
     const repo = this.repo;
     const key = commit.key;
     const prevHeadId = this._headIdForKey.get(key);
+    debugger;
     const currentHead = repo.headForKey(key);
     if (currentHead && prevHeadId !== currentHead?.id) {
       const prevDoc = prevHeadId
@@ -376,6 +384,7 @@ export class Query<
     // let ageChange = 0;
     let skipped = 0;
     let total = 0;
+    let maxAge = 0;
     // const ages = new Set<number>();
     const cachedKeys = new Set(cache?.results || []);
     for (const key of (typeof this.source === 'string'
@@ -392,6 +401,9 @@ export class Query<
       // }
       // assert(!ages.has(commitAge));
       // ages.add(commitAge);
+      if (commitAge > maxAge) {
+        maxAge = commitAge;
+      }
       if (cache && commitAge <= cache.age) {
         if (cachedKeys.has(key)) {
           const head = repo.headForKey(key);
@@ -410,6 +422,7 @@ export class Query<
     }
     if (this.isActive) {
       this._scanTimeMs = performance.now() - startTime;
+      this._age = Math.max(this._age, maxAge);
       if (!this._loadingFinished) {
         this._loadingFinished = true;
         this.repo.db.queryPersistence?.register(

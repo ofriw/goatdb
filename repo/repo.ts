@@ -94,7 +94,6 @@ export class Repository<
   readonly allowedNamespaces: string[] | undefined;
   private readonly _cachedHeadsByKey: Map<string, CachedHead>;
   readonly authorizer?: Authorizer<ST>;
-  private readonly _commitsCache: Map<string, Commit>;
   private readonly _cachedRecordForCommit: Map<string, Item>;
   private readonly _cachedValueForKey: Map<string, [Item, Commit] | undefined>;
   private readonly _adjList: AdjacencyList;
@@ -128,7 +127,6 @@ export class Repository<
     this.authorizer = authorizer;
     this._cachedHeadsByKey = new Map();
     this._cachedValueForKey = new Map();
-    this._commitsCache = new Map();
     this._cachedRecordForCommit = new Map();
     this._adjList = new AdjacencyList();
     this._pendingMergePromises = new Map();
@@ -185,14 +183,7 @@ export class Repository<
   }
 
   getCommit(id: string, session?: Session): Commit {
-    let c = this._commitsCache.get(id);
-    if (!c) {
-      c = this.storage.getCommit(id);
-      if (c) {
-        this._commitsCache.set(id, c);
-        // this._runUpdatesOnNewCommit(c);
-      }
-    }
+    const c = this.storage.getCommit(id);
     if (!c) {
       throw serviceUnavailable();
     }
@@ -1306,7 +1297,7 @@ export class Repository<
     commits = filterIterable(
       commits,
       (c) =>
-        !this._commitsCache.has(c.id) &&
+        this.storage.getCommit(c.id) === undefined &&
         typeof c.scheme?.ns !== null &&
         (this.allowedNamespaces === undefined ||
           c.scheme?.ns === undefined ||
@@ -1407,7 +1398,6 @@ export class Repository<
   }
 
   private _runUpdatesOnNewLeafCommit(commit: Commit): void {
-    this._commitsCache.set(commit.id, commit);
     // Auto add newly discovered sessions to our trust pool
     if (commit.scheme?.ns === kSchemeSession.ns) {
       this._cachedHeadsByKey.delete(commit.key);

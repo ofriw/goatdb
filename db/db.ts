@@ -19,7 +19,7 @@ import {
   itemPathNormalize,
   ItemPathPart,
 } from './path.ts';
-import { isBrowser } from '../base/common.ts';
+import { isBrowser, uniqueId } from '../base/common.ts';
 import { SchemeDataType } from '../cfds/base/scheme.ts';
 import { Item } from '../cfds/base/item.ts';
 import { SimpleTimer, Timer } from '../base/timer.ts';
@@ -198,8 +198,12 @@ export class GoatDB {
     data: SchemeDataType<S>,
   ): Promise<void> {
     const repo = await this.open(path);
+    let key = itemPathGetPart(path, ItemPathPart.Item);
+    if (key.length <= 0) {
+      key = uniqueId();
+    }
     await repo.setValueForKey(
-      itemPathGetPart(path, ItemPathPart.Item),
+      key,
       new Item<S>({
         scheme,
         data,
@@ -248,7 +252,9 @@ export class GoatDB {
     let id = config.id;
     if (!id) {
       id = md51(
-        config.predicate.toString() + config.sortDescriptor?.toString(),
+        (config.predicate !== undefined
+          ? config.predicate.toString()
+          : 'undefined') + config.sortDescriptor?.toString(),
       );
     }
     let q = this._openQueries.get(id);

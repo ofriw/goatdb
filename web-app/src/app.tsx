@@ -1,30 +1,47 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { createUseStyles } from 'react-jss';
-import { useGoatDB } from '../../react/db.tsx';
-import type { GoatDB } from '../../db/db.ts';
+import { useDB, useQuery } from '../../react/db.tsx';
 import { kSchemeTask } from './schemes.ts';
-import { testsMain } from '../../test2.ts';
+
+const REPO_PATH = '/data/tasks';
 
 const useAppStyles = createUseStyles({
   app: {},
 });
 
-export function App() {
-  const styles = useAppStyles();
-  const db = useGoatDB('todo');
-  loadDataIfNeeded(db);
-  testsMain();
-  return <div className={styles.app}>TEST</div>;
+export function Header() {
+  const db = useDB();
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <div>
+      <input type="text" ref={ref}></input>
+      <button
+        onClick={() => {
+          db.create(REPO_PATH, kSchemeTask, {
+            text: ref.current!.value,
+          });
+        }}
+      >
+        Add
+      </button>
+    </div>
+  );
 }
 
-async function loadDataIfNeeded(db: GoatDB): Promise<void> {
-  const repo = await db.open('/data/test');
-  const keys = Array.from(repo.keys());
-  if (keys.length === 0) {
-    await db.create('/data/test/foo', kSchemeTask, {
-      text: 'task 1',
-    });
-  } else {
-    // console.log(keys);
-  }
+export function App() {
+  const styles = useAppStyles();
+  const query = useQuery({
+    scheme: kSchemeTask,
+    source: REPO_PATH,
+  });
+  return (
+    <div>
+      <Header />
+      {query.results().map(({ key, item }) => (
+        <div key={key}>
+          {key}: {item.get('text')}
+        </div>
+      ))}
+    </div>
+  );
 }
