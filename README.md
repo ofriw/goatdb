@@ -6,51 +6,55 @@
 
 ---
 
-GoatDB is the world's first database built like a distributed version control system. Think git, but for your app's data that synchronizes in realtime and does merges automatically.
+GoatDB is the world's first database built like a distributed version control system. Think Git, but for your app's data, synchronizing in real time and merging automatically.
 
 # Status
 
-GoatDB powers Ovvio's realtime collaboration system (https://ovvio.io) in production since January 2024. This project is an effort to separate the underlying DB and offer it as an open source technology for the community to enjoy.
+GoatDB has powered Ovvio's real-time collaboration system (https://ovvio.io) in production since January 2024. This project aims to separate the underlying database and offer it as an open-source technology for the community.
 
-We're working hard on getting ready for a v0.1 launch. We expect it to happen in Q1 2025. Refer to the issues tab for progress.
+We are working hard toward a v0.1 launch, expected in Q1 2025. Refer to the Issues tab for progress.
+
+If you're interested in what we're building, say hi at ofri [at] goatdb.com.
 
 # Motivation
 
 When building GoatDB, we sought to radically simplify and optimize the traditional cloud-first architecture.
 
-The current cloud-first architecture was first conceived back in the 50's when mainframes where the norm. The mainframe was a centralized computer that acted as a single source of truth, with users time sharing it. Fast forward 70+ years and the modern cloud is basically using the more or less the same architecture of the mainframes of the 50's. This design worked fantastically because it reflected the actual state of hardware in the world, but that all changed near the end of the 2010's. The modern server is no longer stronger than the client it servers but the opposite it true - the modern client is so much better than the slice of server that serves it.
+The current cloud-first architecture was conceived in the 1950s when mainframes were the norm. Mainframes were centralized computers acting as single sources of truth, with users time-sharing access. Fast forward 70+ years, and the modern cloud architecture mirrors the same centralized design. This design reflected hardware realities at the time but is increasingly outdated. By the late 2010s, modern clients (phones, laptops, etc.) surpassed servers in computational power if you look at them collectively.
 
-**_So why are we building software that only uses the slow, expansive, part of our hardware (the cloud) and treat the fast, cheap, vastly superior hardware (clients) as a simple cache?_** It's as if we're deliberately trying to work hard and move bits around over and over again. GoatDB seeks to unlock the clients' hardware, and for the first time enable developers to fully utilize 100% of the available hardware resources. By pushing most of the processing to the client, GoatDB radically simplifies the stack making it so much easier to develop robust, scalable, apps.
+**_So why do we build software that relies primarily on the slow, expensive part of our hardware (the cloud) while underutilizing the fast, cheap, and powerful hardware (clients)?_** GoatDB unlocks client-side computational power, enabling developers to fully utilize 100% of available hardware resources. By shifting most processing to the client, GoatDB simplifies the stack, making it easier to build robust, scalable apps.
 
-Check out the [Local First Community](https://localfirstweb.dev/) for some awesome alternative takes on a similar vision.
+Check out the [Local First Community](https://localfirstweb.dev/) for other exciting perspectives on similar visions.
 
 ## Symmetric P2P Architecture
 
-Forget bulky centralized backends. GoatDB pushes most backend tasks directly to the client, creating a streamlined, lightweight, managed private network that’s easy to grow. Rather than doing all of the processing like in a traditional cloud-first architecture, the backend is now simplified mostly into backup and enforcing permissions.
+Forget bulky centralized backends. GoatDB offloads most backend tasks to the client, creating a streamlined, lightweight, managed private network that’s easy to scale. Instead of performing all processing in a centralized backend, GoatDB’s backend is simplified mainly to focus on backups and enforcing permissions.
 
 ## Isomorphic TypeScript
 
-Write once in TypeScript, and the code runs seamlessly on both the client and server. No more context-switching or redundant logic. The entire stack becomes so thin it’s almost transparent.
+Write your code once in TypeScript, and run it seamlessly on both the client and server. Eliminate context-switching and redundant logic. The entire stack becomes so lightweight, it’s almost transparent.
 
 ## Automatic, Real-Time Version Control
 
-Imagine Git, but live. GoatDB syncs your app's data in real time across all nodes, automatically handling merges without the need for developer intervention. Your clients now actively participate, acting as active data replicas. On the rare occasion where the back experiences any kind of data loss, clients will actively restore it in realtime to the most up to date state.
+Imagine Git, but live. GoatDB synchronizes your app's data in real time across all nodes, handling merges automatically without developer intervention. Clients act as active data replicas. In the rare case of backend data loss, clients restore the data in real time to the latest state.
 
 ## Unparalleled Performance
 
-By leveraging the computational power of clients, reduce latency and improve scalability effortlessly. Why use a bunch of expansive and slow cloud machines when we have phones and laptops that are so much more powerful.
+By leveraging client-side computational power, GoatDB reduces latency and improves scalability effortlessly. Why depend on slow, expensive cloud machines when modern devices are significantly more powerful?
 
 ## Developer-First Experience
 
-Focus on building features, not managing infrastructure. Our tools are intuitive, efficient, and designed for seamless integration into modern development workflows. Forget about building and maintaining APIs, messy deployments, migrations, or crashes that take the entire service down. Powered by the open source GoatDB.
+Focus on building features, not managing infrastructure. GoatDB’s intuitive tools integrate seamlessly into modern development workflows. Say goodbye to building and maintaining APIs, messy deployments, migrations, or service crashes that disrupt your app. With GoatDB, developers enjoy a simpler, more reliable stack.
 
-## Say hi to 100% Uptime
+## Say Hi to 100% Uptime
 
-By pushing most of the work to the client and unlocking full offline mode, you gain 100% Availability. Even if the backend goes down, clients will simply switch to offline mode or optionally sync directly with each other using true P2P mode.
+By shifting work to the client and enabling full offline functionality, GoatDB delivers 100% availability. Even if the backend goes down, clients seamlessly switch to offline mode or synchronize directly with each other in true P2P mode.
 
 # Read More
 
 [Architecture Overview](/docs/architecture.md)
+
+[Commit Graph](docs/commit-graph.md)
 
 [Conflict Resolution](/docs/conflict-resolution.md)
 
@@ -60,4 +64,4 @@ By pushing most of the work to the client and unlocking full offline mode, you g
 
 # Language
 
-GoatDB is currently written mostly in TypeScript, with some performance critical parts written in C++ using WASM. We're gradually planning on migrating all code to C++ so we can later add other supported languages.
+GoatDB is currently written primarily in TypeScript, with performance-critical components written in C++ using WebAssembly (WASM). Over time, we plan to migrate the codebase to C++ to support additional languages.
