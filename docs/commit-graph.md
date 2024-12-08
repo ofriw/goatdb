@@ -11,6 +11,13 @@ Each commit in the graph is signed with the private key of the node that created
 
 The length of the commit graph—that is, how much history is retained—determines the maximum supported offline period. For example, if configured to retain two weeks of history, clients can go offline for up to two weeks and still rejoin the network and merge their offline edits.
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/eb7690f8-d814-4240-886c-8427ee96513f" width=600>
+</p>
+<p align="center">
+<sup>An example of a real world commit graph being edited by two users in realtime</sup>
+</p>
+
 ## Creation Process
 
 When creating a new commit, a node follows the procedure below:
