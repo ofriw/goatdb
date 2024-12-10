@@ -79,6 +79,7 @@ Client devices actively participate in data recovery, reducing reliance on centr
 - [Architecture Overview](docs/architecture.md)
 - [Commit Graph](docs/commit-graph.md)
 - [Conflict Resolution](docs/conflict-resolution.md)
+- [Queries](docs/query.md)
 - [Security](docs/security.md)
 - [Synchronization Protocol](docs/sync.md)
 
