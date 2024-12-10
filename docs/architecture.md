@@ -1,10 +1,10 @@
 # GoatDB Architecture
 
-GoatDB employs an architecture originally designed for distributed version control. It operates as a managed P2P network where the server retains authority over all nodes, but most processing occurs at the edge nodes rather than the central server. If you're familiar with Git, this approach should feel intuitive.
+GoatDB employs an architecture originally designed for [distributed version control](https://en.wikipedia.org/wiki/Distributed_version_control). It operates as a managed P2P network where the server retains authority over all nodes, but most processing occurs at the edge nodes rather than the central server. If you're familiar with Git, this approach should feel intuitive.
 
-When a node joins the GoatDB network, it first authenticates with the central server. Once the server successfully verifies the node's identity, it sends a (partial) copy of the data's history to the edge node. Conceptually, this is similar to a `git clone`.
+When a node joins the GoatDB network, it first authenticates with the central server. Once the server successfully verifies the node's identity, it sends a (partial) copy of the data's [history](commit-graph.md) to the edge node. Conceptually, this is similar to a `git clone`.
 
-After downloading the initial history, the edge node maintains soft real-time synchronization with the server. Up to three times per second, the node captures its current in-memory state, packs it into a commit representation, and appends it to the append-only commit graph. Simultaneously, a synchronization process exchanges missing commits between the local and remote copies of the graph. Think of multiple developers working on local Git repositories and syncing with a central server—except this happens in real time for your app's data.
+After downloading the initial [history](commit-graph.md), the edge node maintains soft real-time synchronization with the server. Up to three times per second, the node captures its current in-memory state, packs it into a commit representation, and appends it to the [append-only commit graph](commit-graph.md). Simultaneously, a [synchronization process](sync.md) exchanges missing commits between the local and remote copies of the graph. Think of multiple developers working on local Git repositories and syncing with a central server—except this happens in real time for your app's data.
 
 To enable real-time commits and synchronization, GoatDB resolves merge conflicts automatically and efficiently. Read more about [Conflict Resolution](./conflict-resolution.md).
 

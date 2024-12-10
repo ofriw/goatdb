@@ -6,62 +6,88 @@
 
 ---
 
-GoatDB is the world's first database built like a distributed version control system. Think Git, but for your app's data, synchronizing in real time and merging automatically.
+GoatDB is a distributed database system inspired by the principles of version control systems like Git. It provides real-time synchronization and conflict resolution for application data, enabling independent nodes to operate collaboratively and efficiently scale to modern workloads.
 
-# Status
+## Project Status
 
-GoatDB has powered Ovvio's real-time collaboration system (https://ovvio.io) in production since January 2024. This project aims to separate the underlying database and offer it as an open-source technology for the community.
+GoatDB has been in production use as part of Ovvio’s real-time collaboration system since January 2024 ([https://ovvio.io](https://ovvio.io)). This repository aims to decouple the database core from Ovvio’s platform and make it available as an open-source project.
 
-We are working hard toward a v0.1 launch, expected in Q1 2025. Refer to the Issues tab for progress.
+The first public release (v0.1) is targeted for Q1 2025. Progress is tracked in the Issues tab.
 
-If you're interested in what we're building, say hi at ofri [at] goatdb.com.
+For inquiries, contact ofri [at] goatdb.com.
 
-# Motivation
+## Design Rationale
 
-When building GoatDB, we sought to radically simplify and optimize the traditional cloud-first architecture.
+### Motivation
 
-The current cloud-first architecture was conceived in the 1950s when mainframes were the norm. Mainframes were centralized computers acting as single sources of truth, with users time-sharing access. Fast forward 70+ years, and the modern cloud architecture mirrors the same centralized design. This design reflected hardware realities at the time but is increasingly outdated. By the late 2010s, modern clients (phones, laptops, etc.) surpassed servers in computational power if you look at them collectively.
+GoatDB addresses limitations of traditional cloud-centric architectures, which were designed for centralized hardware (e.g., mainframes of the 1950s) and do not fully exploit the computational capabilities of modern client devices. By leveraging client-side processing power, GoatDB minimizes reliance on centralized infrastructure, improving performance and scalability.
 
-**_So why do we build software that relies primarily on the slow, expensive part of our hardware (the cloud) while underutilizing the fast, cheap, and powerful hardware (clients)?_** GoatDB unlocks client-side computational power, enabling developers to fully utilize 100% of available hardware resources. By shifting most processing to the client, GoatDB simplifies the stack, making it easier to build robust, scalable apps.
+This architecture aligns with the principles of the [Local First Community](https://localfirstweb.dev/), which advocates for prioritizing client-side capabilities.
 
-Check out the [Local First Community](https://localfirstweb.dev/) for other exciting perspectives on similar visions.
+### Key Architectural Features
 
-## Symmetric P2P Architecture
+#### Symmetric Peer-to-Peer (P2P) Network
 
-Forget bulky centralized backends. GoatDB offloads most backend tasks to the client, creating a streamlined, lightweight, managed private network that’s easy to scale. Instead of performing all processing in a centralized backend, GoatDB’s backend is simplified mainly to focus on backups and enforcing permissions.
+GoatDB implements a managed P2P network where clients act as active participants in data processing and storage. The backend primarily handles permissions enforcement and data backups, simplifying its complexity.
 
-## Isomorphic TypeScript
+#### Isomorphic TypeScript
 
-Write your code once in TypeScript, and run it seamlessly on both the client and server. Eliminate context-switching and redundant logic. The entire stack becomes so lightweight, it’s almost transparent.
+The database logic is written in TypeScript, enabling seamless execution on both client and server environments. This approach reduces redundant code and streamlines development.
 
-## Automatic, Real-Time Version Control
+#### Append-Only Commit Graph
 
-Imagine Git, but live. GoatDB synchronizes your app's data in real time across all nodes, handling merges automatically without developer intervention. Clients act as active data replicas. In the rare case of backend data loss, clients restore the data in real time to the latest state.
+GoatDB’s core data structure is an append-only commit graph, which tracks changes incrementally. This design ensures data integrity, facilitates real-time synchronization, and provides a natural mechanism for conflict resolution.
 
-## Unparalleled Performance
+## Core Capabilities
 
-By leveraging client-side computational power, GoatDB reduces latency and improves scalability effortlessly. Why depend on slow, expensive cloud machines when modern devices are significantly more powerful?
+### Real-Time Synchronization
 
-## Developer-First Experience
+GoatDB synchronizes data across nodes in real time using an [efficient protocol](docs/sync.md) based on Bloom Filters. Updates propagate incrementally, ensuring low latency and consistency without developer intervention.
 
-Focus on building features, not managing infrastructure. GoatDB’s intuitive tools integrate seamlessly into modern development workflows. Say goodbye to building and maintaining APIs, messy deployments, migrations, or service crashes that disrupt your app. With GoatDB, developers enjoy a simpler, more reliable stack.
+### Scalability for Modern Workloads
 
-## Say Hi to 100% Uptime
+GoatDB is designed to handle the demands of modern applications, from lightweight mobile clients to enterprise-scale systems. By distributing processing and storage across client devices, GoatDB can scale horizontally with minimal infrastructure, making it ideal for applications with large datasets or high complexity.
 
-By shifting work to the client and enabling full offline functionality, GoatDB delivers 100% availability. Even if the backend goes down, clients seamlessly switch to offline mode or synchronize directly with each other in true P2P mode.
+### Offline Operation
 
-# Read More
+Each node maintains an independent local copy of the database, enabling full offline functionality. When connectivity is restored, the system automatically reconciles changes.
 
-[Architecture Overview](/docs/architecture.md)
+### Conflict Resolution
 
-[Commit Graph](docs/commit-graph.md)
+The database employs a deterministic conflict resolution strategy based on three-way merging, ensuring consistent outcomes across nodes. Details are available in the [Conflict Resolution Documentation](docs/conflict-resolution.md).
 
-[Conflict Resolution](/docs/conflict-resolution.md)
+### Performance Optimization
 
-[Security](/docs/security.md)
+By offloading most processing to client devices, GoatDB reduces latency and scales efficiently. Clients act as data replicas, enabling faster reads and updates compared to cloud-only systems.
 
-[Synchronization Protocol](/docs/sync.md)
+## Development and Deployment Workflow
 
-# Language
+### Simplified Development
 
-GoatDB is currently written primarily in TypeScript, with performance-critical components written in C++ using WebAssembly (WASM). Over time, we plan to migrate the codebase to C++ to support additional languages.
+Developers interact with GoatDB using an in-memory model, eliminating the need for complex API layers. The system supports [dynamic queries](docs/query.md) and real-time updates, streamlining application logic.
+
+### Lightweight Deployment
+
+Applications using GoatDB can be packaged as single executable containers that embed both the database and application logic. This design simplifies deployment to any environment, including on-premises servers.
+
+### Fault Tolerance
+
+Client devices actively participate in data recovery, reducing reliance on centralized backups. In the event of backend failures, clients ensure data continuity and availability.
+
+## Further Documentation
+
+- [Architecture Overview](docs/architecture.md)
+- [Commit Graph](docs/commit-graph.md)
+- [Conflict Resolution](docs/conflict-resolution.md)
+- [Security](docs/security.md)
+- [Synchronization Protocol](docs/sync.md)
+
+## Technical Details
+
+### Current Implementation
+
+The database is implemented primarily in TypeScript, with performance-critical components written in C++ and compiled to WebAssembly (WASM).
+
+### Future Plans
+
+The codebase is being incrementally migrated to C++ to enhance performance and enable support for additional languages in the future.
