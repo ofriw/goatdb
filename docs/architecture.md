@@ -1,60 +1,72 @@
-# GoatDB Architecture
+# GoatDB Architecture Overview
 
-GoatDB employs an architecture originally designed for [distributed version control](https://en.wikipedia.org/wiki/Distributed_version_control). It operates as a managed P2P network where the server retains authority over all nodes, but most processing occurs at the edge nodes rather than the central server. If you're familiar with Git, this approach should feel intuitive.
+GoatDB is designed around principles from [distributed version control systems](https://en.wikipedia.org/wiki/Distributed_version_control), functioning as a managed peer-to-peer (P2P) network. In this architecture, the central server retains authority over all nodes, while computational and data synchronization tasks are predominantly handled by edge nodes.
 
-When a node joins the GoatDB network, it first authenticates with the central server. Once the server successfully verifies the node's identity, it sends a (partial) copy of the data's [history](commit-graph.md) to the edge node. Conceptually, this is similar to a `git clone`.
+## Node Authentication and Data Initialization
 
-After downloading the initial [history](commit-graph.md), the edge node maintains soft real-time synchronization with the server. Up to three times per second, the node captures its current in-memory state, packs it into a commit representation, and appends it to the [append-only commit graph](commit-graph.md). Simultaneously, a [synchronization process](sync.md) exchanges missing commits between the local and remote copies of the graph. Think of multiple developers working on local Git repositories and syncing with a central server—except this happens in real time for your app's data.
+When a node joins the GoatDB network, it authenticates with the central server. Upon successful authentication, the server provides the node with a partial copy of the data's [history](commit-graph.md). This process is conceptually similar to a `git clone` operation, where the node retrieves an initial dataset to begin participating in the network.
 
-To enable real-time commits and synchronization, GoatDB resolves merge conflicts automatically and efficiently. Read more about [Conflict Resolution](./conflict-resolution.md).
+## Real-Time Data Synchronization
 
-GoatDB also employs a probabilistic synchronization protocol using Bloom Filters for real-time data exchange. Read more about it [here](./sync.md).
+Once initialized, the edge node maintains a soft real-time synchronization with the server. This process involves:
 
-GoatDB is designed to run on servers, native clients, and within browsers. Storage solutions vary by environment:
+1. Capturing the in-memory state of the node (up to three times per second).
+2. Packaging this state into a commit representation.
+3. Appending the new commit to the [append-only commit graph](commit-graph.md).
 
-- **Server/Native Clients:** Data is stored in an append-only log file on disk.
-- **Browsers:** When supported, GoatDB uses OPFS with the same append-only log file structure. If OPFS is unavailable, it falls back to an IndexedDB-based implementation.
+Nodes participates in a [synchronization process](sync.md), which exchanges missing commits between the edge node and the central server. This mechanism ensures consistent data propagation across the network, resembling the behavior of distributed version control systems but operating in near-real-time. The same mechanism also used server-to-server.
 
-## Simplicity and Independence
+## Conflict Resolution
 
-### Build
+GoatDB incorporates automated and efficient conflict resolution to facilitate real-time operations. Details on the conflict resolution strategy are available in the [Conflict Resolution documentation](./conflict-resolution.md).
 
-From your first line of code, GoatDB abstracts most network logic and handling through real-time synchronization. There’s no need to build or maintain APIs. Instead, you work with an in-memory representation that is fully synchronous and client-side. Changes are sent as batches of delta-compressed commits, often more efficient than traditional REST APIs.
+## Synchronization Protocol
 
-For React users, GoatDB includes a state management package pre-wired to the database. You can read, edit, and query in-memory items while GoatDB handles real-time commits, merges, and efficient re-rendering using modern React hooks.
+To optimize real-time data exchange, GoatDB employs a probabilistic synchronization protocol based on Bloom Filters. This approach minimizes the overhead of comparing data across nodes. Additional details are provided in the [synchronization documentation](./sync.md).
 
-### Deploy
+## Storage Model
 
-Deploying your app to the cloud becomes radically simpler with GoatDB. The database is embedded alongside your code and static assets, compiled into a single executable. This lightweight container combines your entire stack into a single deployable artifact that works on any common server or on-prem deployment.
+GoatDB supports diverse runtime environments, with a storage model tailored to the underlying platform:
 
-If you prefer working with a standard SQL database, consider the awesome [PocketBase](https://pocketbase.io/) as an alternative.
+- **Server and Native Clients**: Data is stored as an append-only log file on disk.
+- **Browsers**: When available, GoatDB uses the Origin Private File System (OPFS) to maintain an append-only log structure. In environments lacking OPFS support, it defaults to an IndexedDB-based implementation.
 
-### Operate
+## Development and Deployment
 
-Operating GoatDB’s architecture is akin to managing stateless microservices rather than complex stateful stacks. GoatDB’s P2P configuration ensures simplicity:
+### Development Workflow
 
-- **Clients as Active Replicas:** Since clients maintain local copies of the data, they act as active replicas. Even if production servers crash or lose data, clients can restore the server fully.
-- **Offline Mode:** Clients revert to offline mode if the server becomes unavailable. Future updates will introduce optional WebRTC synchronization for continued online operations in case of server failures.
-- **Backup and Restore:** Backups are inherent to GoatDB’s design. Clients hold partial copies of the data and actively participate in the network’s backup and restoration.
+GoatDB abstracts most network and synchronization logic, allowing developers to focus on application-level logic. Applications interact with a fully synchronous, in-memory data representation, while GoatDB handles the underlying data transmission using delta-compressed commit batches. This approach reduces the complexity associated with traditional REST APIs.
 
-GoatDB scales both horizontally and vertically, offering flexibility in deployment and operations.
+For applications using React, GoatDB provides a state management package that integrates seamlessly with modern React hooks. This integration supports real-time data synchronization, state management, and efficient UI updates.
 
-### Support
+### Deployment Process
 
-Traditional databases offer Point-In-Time Recovery (PIT), but GoatDB goes further with full version control and real-time history tracking. If a user encounters a bug, you can revert changes from that session directly in production, even while the user is active. Reverts append new commits with older snapshots, making them identical to conventional edits. If issues arise during the revert process, you can safely undo the revert and start over.
+GoatDB simplifies deployment by embedding the database alongside application code and static assets into a single executable. This unified artifact is compatible with standard servers and on-premises environments, reducing operational overhead.
 
-### Fix
+### Operational Considerations
 
-Debugging and fixing issues is easier with GoatDB. Compressing the stack into a single executable allows you to load affected data or users and attach a debugger for detailed analysis. History Playback lets you replay specific sequences of commits as if they were happening live, treating data like video playback for precise troubleshooting.
+- **Active Replication**: Clients maintain local copies of data, acting as active replicas. In the event of server data loss, client nodes can restore the server state.
+- **Offline Mode**: If the server becomes unavailable, clients automatically switch to offline mode, preserving their ability to function. Future updates will introduce WebRTC-based peer-to-peer synchronization to further enhance resilience.
+- **Backup and Restore**: Backup functionality is inherently supported by the distributed design. Nodes store partial data replicas, facilitating recovery and redundancy.
 
-### Compliance
+## Advanced Features
 
-When your product needs to comply with regulations, GoatDB simplifies the process. Its append-only signed commit graph serves as a built-in audit log, ensuring data manipulation is transparent and traceable. Malicious or unexpected corruption can be reverted to the last known good state.
+### Debugging and Troubleshooting
 
-GoatDB supports single-tenant deployment with ease. On-prem deployments can bypass some regulations, while planned E2E encryption and WebRTC synchronization will enhance security and privacy further.
+GoatDB compresses the application stack into a single executable, simplifying debugging workflows. Developers can replay specific sequences of commits using a "History Playback" feature, enabling precise analysis of data changes.
 
-### Migration and Data Warehouse
+### Compliance and Auditability
 
-GoatDB simplifies deploying new app versions. Version control applies to both data and schemas. When a new schema version is deployed, it coexists on a separate branch alongside previous versions. GoatDB performs one-way merges, ensuring the new schema sees changes from the old schema but not vice versa. This enables safe rolling deployments. If issues arise, simply revert changes.
+The append-only signed commit graph serves as a built-in audit log, providing traceability for all data modifications. This design supports regulatory compliance by ensuring transparency and the ability to revert changes to the last valid state.
 
-Setting up a data warehouse is straightforward with GoatDB. Schema-based organization ensures compatibility and ease of integration.
+### Schema and Data Migration
+
+GoatDB uses version control principles for schema management. When deploying new schema versions, changes are applied to a separate branch. This approach ensures backward compatibility and allows rolling updates without disrupting existing data workflows. If issues arise, changes can be reverted seamlessly.
+
+### Integration with Data Warehousing
+
+Data organization in GoatDB is schema-based, facilitating straightforward integration with data warehouses. The structured approach to data storage ensures compatibility with analytical workflows.
+
+---
+
+This architecture balances the benefits of distributed version control with the requirements of real-time data processing, offering a robust solution for modern application development.
