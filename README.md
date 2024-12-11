@@ -6,7 +6,7 @@
 
 ---
 
-# GoatDB: A Scalable, Edge-Native Database Built for Modern Workloads
+# A Scalable, Edge-Native Database Built for Modern Workloads
 
 GoatDB is a distributed open source database system inspired by the principles of version control systems like Git. It provides real-time synchronization and conflict resolution for application data, enabling independent nodes to operate collaboratively and efficiently scale to modern workloads. GoatDB is particularly well-suited for building edge-native applications by leveraging client-side capabilities.
 
@@ -99,6 +99,7 @@ Client devices actively participate in data recovery, reducing reliance on centr
 - [Concepts](docs/concepts.md)
 - [Conflict Resolution](docs/conflict-resolution.md)
 - [Queries](docs/query.md)
+- [Schemas](docs/schema.md)
 - [Security](docs/security.md)
 - [Synchronization Protocol](docs/sync.md)
 

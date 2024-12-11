@@ -2,9 +2,9 @@
 
 **Item**: A basic unit of data, analogous to a row in a relational database or a document in a document database. Each item maintains its own [distributed commit graph](commit-graph.md), serving as its atomic unit. Items guarantee [Causal Consistency](https://en.wikipedia.org/wiki/Causal_consistency) within their respective commit graphs.
 
-**Scheme**: Defines the structure of an item. Schemes are versioned, allowing multiple versions of the same scheme to coexist within the database.
+**Schema**: Defines the structure of an item. [Schemas](schema.md) are versioned, allowing multiple versions of the same schema to coexist within the database.
 
-**Repository**: A collection of items and their associated schemes. A repository can contain items with varying schemes. Each repository is synchronized independently, enabling application-level sharding.
+**Repository**: A collection of items and their associated schemas. A repository can contain items with varying schemas. Each repository is synchronized independently, enabling application-level sharding.
 
 **Path**: Objects within GoatDB are uniquely identified by their paths, which follow this structure:
 
