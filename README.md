@@ -6,7 +6,9 @@
 
 ---
 
-GoatDB is a distributed database system inspired by the principles of version control systems like Git. It provides real-time synchronization and conflict resolution for application data, enabling independent nodes to operate collaboratively and efficiently scale to modern workloads.
+# GoatDB: Distributed Version-Controlled Database
+
+GoatDB is a distributed open source database system inspired by the principles of version control systems like Git. It provides real-time synchronization and conflict resolution for application data, enabling independent nodes to operate collaboratively and efficiently scale to modern workloads. GoatDB is particularly well-suited for building edge-native applications by leveraging client-side capabilities.
 
 ## Project Status
 
@@ -23,6 +25,17 @@ For inquiries, contact ofri [at] goatdb.com.
 GoatDB addresses limitations of traditional cloud-centric architectures, which were designed for centralized hardware (e.g., mainframes of the 1950s) and do not fully exploit the computational capabilities of modern client devices. By leveraging client-side processing power, GoatDB minimizes reliance on centralized infrastructure, improving performance and scalability.
 
 This architecture aligns with the principles of the [Local First Community](https://localfirstweb.dev/), which advocates for prioritizing client-side capabilities.
+
+### Supporting Edge-Native Applications
+
+Edge-native applications run significant portions of their logic and data storage on client devices rather than relying solely on centralized cloud infrastructure. GoatDB’s architecture supports this paradigm by enabling the following:
+
+- **Local Processing:** Queries and updates are executed locally on edge devices, reducing latency and dependency on network connectivity.
+- **Real-Time Synchronization:** Changes made on one edge device are synchronized efficiently with others, maintaining consistency across the network.
+- **Offline Operation:** Full functionality is preserved even when devices are disconnected from the network, with automatic reconciliation upon reconnection.
+- **Data Ownership:** Users retain control over their data, as it resides on their devices rather than a central server.
+
+By addressing these needs, GoatDB empowers developers to create applications optimized for performance, resilience, and user privacy.
 
 ### Key Architectural Features
 
@@ -43,6 +56,10 @@ GoatDB’s core data structure is an append-only commit graph, which tracks chan
 ### Real-Time Synchronization
 
 GoatDB synchronizes data across nodes in real time using an [efficient protocol](docs/sync.md) based on Bloom Filters. Updates propagate incrementally, ensuring low latency and consistency without developer intervention.
+
+### Incremental Query Mechanism
+
+GoatDB dynamically updates query results as underlying data changes. Queries remain "open," incorporating real-time updates with minimal computation overhead. This ensures responsive and consistent results, ideal for modern, interactive applications.
 
 ### Scalability for Modern Workloads
 

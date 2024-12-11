@@ -1,6 +1,6 @@
 # GoatDB Architecture Overview
 
-GoatDB is designed around principles from [distributed version control systems](https://en.wikipedia.org/wiki/Distributed_version_control), functioning as a managed peer-to-peer (P2P) network. In this architecture, the central server retains authority over all nodes, while computational and data synchronization tasks are predominantly handled by edge nodes.
+GoatDB is designed around principles from [distributed version control systems](https://en.wikipedia.org/wiki/Distributed_version_control), functioning as a managed peer-to-peer (P2P) network. In this architecture, the central server retains authority over all nodes, while computational and data synchronization tasks are predominantly handled by edge nodes. This design makes GoatDB an ideal foundation for building **edge-native applications** by maximizing client-side processing and minimizing reliance on centralized infrastructure.
 
 ## Node Authentication and Data Initialization
 
@@ -14,7 +14,7 @@ Once initialized, the edge node maintains a soft real-time synchronization with 
 2. Packaging this state into a signed commit representation.
 3. Appending the new commit to the [append-only commit graph](commit-graph.md).
 
-Nodes participates in a [synchronization process](sync.md), which exchanges missing commits between the edge node and the central server. This mechanism ensures consistent data propagation across the network, resembling the behavior of distributed version control systems but operating in near-real-time. The same mechanism also used server-to-server.
+Nodes participate in a [synchronization process](sync.md), which exchanges missing commits between the edge node and the central server. This mechanism ensures consistent data propagation across the network, resembling the behavior of distributed version control systems but operating in near-real-time. The same mechanism is also used for server-to-server synchronization, enabling scalability.
 
 ## Conflict Resolution
 
@@ -45,11 +45,15 @@ GoatDB simplifies deployment by embedding the database alongside application cod
 
 ### Operational Considerations
 
-- **Active Replication**: Clients maintain local copies of data, acting as active replicas. In the event of server data loss, client nodes can restore the server state.
-- **Offline Mode**: If the server becomes unavailable, clients automatically switch to offline mode, preserving their ability to function. Future updates will introduce WebRTC-based peer-to-peer synchronization to further enhance resilience.
-- **Backup and Restore**: Backup functionality is inherently supported by the distributed design. Nodes store partial data replicas, facilitating recovery and redundancy.
+- **Active Replication:** Clients maintain local copies of data, acting as active replicas. In the event of server data loss, client nodes can restore the server state.
+- **Offline Mode:** If the server becomes unavailable, clients automatically switch to offline mode, preserving their ability to function. Future updates will introduce WebRTC-based peer-to-peer synchronization to further enhance resilience.
+- **Backup and Restore:** Backup functionality is inherently supported by the distributed design. Nodes store partial data replicas, facilitating recovery and redundancy.
 
 ## Advanced Features
+
+### Incremental Query Mechanism
+
+GoatDB provides an incremental query mechanism that dynamically updates results as the underlying data changes. This feature reduces computational overhead, ensures real-time responsiveness, and integrates seamlessly with modern UI frameworks like React.
 
 ### Debugging and Troubleshooting
 
@@ -69,4 +73,4 @@ Data organization in GoatDB is schema-based, facilitating straightforward integr
 
 ---
 
-This architecture balances the benefits of distributed version control with the requirements of real-time data processing, offering a robust solution for modern application development.
+This architecture balances the benefits of distributed version control with the requirements of real-time data processing, offering a robust solution for modern edge-native application development.
