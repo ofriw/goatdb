@@ -11,7 +11,7 @@ When a node joins the GoatDB network, it authenticates with the central server. 
 Once initialized, the edge node maintains a soft real-time synchronization with the server. This process involves:
 
 1. Capturing the in-memory state of the node (up to three times per second).
-2. Packaging this state into a commit representation.
+2. Packaging this state into a signed commit representation.
 3. Appending the new commit to the [append-only commit graph](commit-graph.md).
 
 Nodes participates in a [synchronization process](sync.md), which exchanges missing commits between the edge node and the central server. This mechanism ensures consistent data propagation across the network, resembling the behavior of distributed version control systems but operating in near-real-time. The same mechanism also used server-to-server.
