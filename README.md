@@ -6,7 +6,7 @@
 
 ---
 
-# GoatDB: Distributed Version-Controlled Database
+# GoatDB: A Scalable, Edge-Native Database Built for Modern Workloads
 
 GoatDB is a distributed open source database system inspired by the principles of version control systems like Git. It provides real-time synchronization and conflict resolution for application data, enabling independent nodes to operate collaboratively and efficiently scale to modern workloads. GoatDB is particularly well-suited for building edge-native applications by leveraging client-side capabilities.
 
