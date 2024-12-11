@@ -18,6 +18,20 @@ The first public release (v0.1) is targeted for Q1 2025. Progress is tracked in 
 
 For inquiries, contact ofri [at] goatdb.com.
 
+## Documentation
+
+[API Overview](docs/api.md)
+• [Architecture Overview](docs/architecture.md)
+• [Concepts](docs/concepts.md)
+• [Queries](docs/query.md)
+• [Schemas](docs/schema.md)
+
+#### Advanced Topics
+
+[Commit Graph](docs/commit-graph.md)
+• [Conflict Resolution](docs/conflict-resolution.md)
+• [Synchronization Protocol](docs/sync.md)
+
 ## Design Rationale
 
 ### Motivation
@@ -90,18 +104,6 @@ Applications using GoatDB can be packaged as single executable containers that e
 ### Fault Tolerance
 
 Client devices actively participate in data recovery, reducing reliance on centralized backups. In the event of backend failures, clients ensure data continuity and availability.
-
-## Further Documentation
-
-- [Architecture Overview](docs/architecture.md)
-- [API Overview](docs/api.md)
-- [Commit Graph](docs/commit-graph.md)
-- [Concepts](docs/concepts.md)
-- [Conflict Resolution](docs/conflict-resolution.md)
-- [Queries](docs/query.md)
-- [Schemas](docs/schema.md)
-- [Security](docs/security.md)
-- [Synchronization Protocol](docs/sync.md)
 
 ## Technical Details
 
