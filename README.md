@@ -6,13 +6,11 @@
 
 ---
 
-GoatDB is an open-source, distributed database system built on principles similar to Git and other distributed version control systems (DVCS). By leveraging Git-inspired data management techniques, GoatDB provides a robust framework for managing application data changes, merging updates, and synchronizing across devices—all fully automated. By pushing most computation to the edge, GoatDB empowers frontend developers to build the next generation of applications with minimal backend dependencies. Developers can focus on delivering rich, responsive user experiences while GoatDB seamlessly handles synchronization, conflict resolution, and offline functionality, ensuring real-time collaboration and reliable data consistency.
+GoatDB is a real-time Distributed Version Control System (RDVCS) that simplifies building modern, responsive applications. Unlike traditional databases, GoatDB runs most of the work—like reading, writing, and querying data—on the client side instead of relying on the server. This approach ensures your app feels fast and always works, even if the network connection is unstable.
+
+GoatDB also guarantees causal consistency, meaning changes are shared in the correct order across clients and servers, so data always makes sense to users. Its edge-native design eliminates many backend challenges, making both development and deployment easier while supporting modern workloads at scale.
 
 ## Getting Started
-
-Detailed setup instructions are coming soon. Follow the Issues tab to track progress toward v0.1.
-
-## Documentation
 
 [API Overview](docs/api.md)
 • [Architecture Overview](docs/architecture.md)
@@ -20,9 +18,7 @@ Detailed setup instructions are coming soon. Follow the Issues tab to track prog
 • [Queries](docs/query.md)
 • [Schemas](docs/schema.md)
 
-[Commit Graph](docs/commit-graph.md)
-• [Conflict Resolution](docs/conflict-resolution.md)
-• [Synchronization Protocol](docs/sync.md)
+Detailed setup instructions are coming soon. Follow the Issues tab to track progress toward v0.1.
 
 ## Why GoatDB?
 
@@ -35,29 +31,29 @@ GoatDB empowers frontend developers by simplifying the complexities of building 
 
 ## Use Cases
 
+### SaaS B2B
+
+GoatDB enhances UI responsiveness and reduces operational costs for SaaS B2B platforms. Its real-time processing, edge-native design, and scalability lower expenses in both cloud infrastructure and personnel needs, optimizing operational efficiency.
+
+### Prototyping
+
+GoatDB simplifies rapid prototyping with minimal setup and intuitive client-side processing. Its version control for both data and schema supports quick iterations and feature testing, making it ideal for fast-paced, innovation-driven teams.
+
+### Education and Gaming
+
+GoatDB supports offline-first learning tools and multiplayer games with real-time synchronization and tamper-proof tracking. It delivers seamless interactions and secure progress tracking for diverse user needs.
+
 ### Automotive
 
-GoatDB ensures reliable automotive systems with real-time synchronization and offline functionality, accelerating delivery, diagnostics, and fleet management applications.
-
-### Productivity Tools
-
-Ideal for collaborative document editors, task managers, and real-time note-taking apps. GoatDB ensures offline access, real-time updates and automatic merges.
-
-### Enterprise Apps
-
-GoatDB powers enterprise applications with secure, real-time collaboration and scalable data management, enabling faster delivery of CRMs, ERPs, and collaboration tools.
-
-### Education Platforms
-
-Enables offline-first learning tools and collaborative classroom apps for regions with unreliable connectivity.
+GoatDB drives automotive innovation with rapid feature rollouts, secure OTA updates, and offline support. It ensures robust performance and reliability for diagnostics, fleet management, and other critical applications.
 
 ### Healthcare and Compliance
 
-GoatDB ensures secure, privacy-compliant data storage with a signed audit log for traceability. Single-tenant deployments provide complete control over infrastructure and compliance needs.
+GoatDB ensures secure, privacy-compliant data storage with a signed audit log for traceability. Single-tenant deployments, packaged as a single executable, simplify installation and management while providing complete control over infrastructure and compliance needs.
 
-### Gaming Applications
+### Agents and Telemetry
 
-GoatDB enables real-time synchronization for multiplayer games, ensuring seamless player interactions and reliable progress tracking, even with intermittent connectivity. Its signed audit log prevents cheating by providing a tamper-proof record of player actions.
+GoatDB enables efficient telemetry collection for distributed systems with delta compression and rolling deployments. Its architecture ensures low-resource usage and reliable performance for IoT devices and industrial applications.
 
 ## Project Status
 
@@ -66,6 +62,12 @@ GoatDB has been production-tested in Ovvio’s real-time collaboration platform 
 The first public release (v0.1) is targeted for Q1 2025. Progress is tracked in the Issues tab.
 
 Contact: ofri [at] goatdb.com.
+
+## Further Reading
+
+- [Commit Graph](docs/commit-graph.md)
+- [Conflict Resolution](docs/conflict-resolution.md)
+- [Synchronization Protocol](docs/sync.md)
 
 ---
 
