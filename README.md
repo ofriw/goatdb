@@ -15,6 +15,7 @@ GoatDB also guarantees causal consistency, meaning changes are shared in the cor
 [API Overview](docs/api.md)
 • [Architecture Overview](docs/architecture.md)
 • [Concepts](docs/concepts.md)
+• [FAQ](docs/faq.md)
 • [Queries](docs/query.md)
 • [Schemas](docs/schema.md)
 
@@ -38,6 +39,10 @@ GoatDB enhances UI responsiveness and reduces operational costs for SaaS B2B pla
 ### Prototyping
 
 GoatDB simplifies rapid prototyping with minimal setup and intuitive client-side processing. Its version control for both data and schema supports quick iterations and feature testing, making it ideal for fast-paced, innovation-driven teams.
+
+### Consumer Mobile Apps
+
+GoatDB empowers consumer mobile apps with offline-first functionality, instant responsiveness, and real-time data synchronization. Whether for social networking, e-commerce, or fitness tracking, it ensures users can interact seamlessly even without a stable internet connection. Developers benefit from simplified data handling and improved app performance, enhancing user engagement and retention.
 
 ### Education and Gaming
 
