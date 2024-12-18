@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 // TODO: check these preprocessor directives..
 #if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
@@ -57,7 +58,7 @@ private:
 
   static size_t calculateTotalBits(size_t size, double fpr);
   static size_t calculateOptMaxNumHashes(size_t itemCount, size_t bitArraySize);
-  static uint32_t hashString(const std::string &value, uint32_t seed);
+  static uint32_t hashString(std::string_view value, uint32_t seed);
   void setBit(size_t index);
   bool getBit(size_t index) const;
 
@@ -65,8 +66,8 @@ public:
   BloomFilter(size_t size, FalsePositiveRate fpr, size_t maxHashes = 0);
   BloomFilter(const char *buff);
   ~BloomFilter();
-  void add(const std::string &value);
-  bool has(const std::string &value) const;
+  void add(std::string_view value);
+  bool has(std::string_view value) const;
   void clear();
   double fillRate() const;
   const char *getInternalPointer() const;
