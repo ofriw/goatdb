@@ -15,7 +15,7 @@ import { isDecoderConfig } from '../base/core-types/encoding/utils.ts';
 import { uniqueId } from '../base/common.ts';
 import { coreValueEquals } from '../base/core-types/equals.ts';
 import { assert } from '../base/error.ts';
-import { Scheme } from '../cfds/base/scheme.ts';
+import { Schema, SchemaManager } from '../cfds/base/schema.ts';
 import { VersionNumber } from '../base/version-number.ts';
 import { getOvvioConfig } from '../server/config.ts';
 import { Comparable, coreValueCompare } from '../base/core-types/index.ts';
@@ -62,6 +62,7 @@ export interface CommitConfig {
   mergeLeader?: string;
   revert?: string;
   frozen?: true;
+  schemaManager?: SchemaManager;
 }
 
 export interface CommitSerializeOptions {
@@ -81,6 +82,7 @@ export interface CommitDecoderConfig<T = object>
 
 export class Commit implements Encodable, Decodable, Equatable, Comparable {
   readonly orgId: string;
+  readonly schemaManager: SchemaManager;
   private _buildVersion!: VersionNumber;
   private _id!: string;
   private _session!: string;
@@ -103,7 +105,11 @@ export class Commit implements Encodable, Decodable, Equatable, Comparable {
     return CONNECTION_ID;
   }
 
-  constructor(config: CommitConfig | CommitDecoderConfig) {
+  constructor(
+    config: CommitConfig | CommitDecoderConfig,
+    schemaManager?: SchemaManager,
+  ) {
+    this.schemaManager = schemaManager || SchemaManager.default;
     if (isDecoderConfig(config)) {
       this.orgId = config.orgId;
       this.deserialize(config.decoder);
@@ -200,7 +206,7 @@ export class Commit implements Encodable, Decodable, Equatable, Comparable {
     return this._buildVersion;
   }
 
-  get scheme(): Scheme | undefined {
+  get scheme(): Schema | undefined {
     const contents = this.contents;
     if (commitContentsIsDelta(contents)) {
       return contents.edit.scheme;
@@ -293,12 +299,16 @@ export class Commit implements Encodable, Decodable, Equatable, Comparable {
     return result;
   }
 
-  static fromJS(orgId: string, obj: ReadonlyJSONObject): Commit {
+  static fromJS(
+    orgId: string,
+    obj: ReadonlyJSONObject,
+    schemaManager: SchemaManager,
+  ): Commit {
     const id = obj.id as string;
     let result = FROZEN_COMMITS.get(id);
     if (!result) {
       const decoder = JSONCyclicalDecoder.get(obj);
-      result = new Commit({ decoder, orgId });
+      result = new Commit({ decoder, orgId }, schemaManager);
       result._frozen = true;
       FROZEN_COMMITS.set(id, result);
       if (
@@ -319,6 +329,7 @@ export class Commit implements Encodable, Decodable, Equatable, Comparable {
   static fromJSArr(
     orgId: string,
     arr: readonly ReadonlyJSONObject[],
+    schemaManager: SchemaManager,
   ): Commit[] {
     const result: Commit[] = [];
     for (const obj of arr) {
@@ -326,7 +337,7 @@ export class Commit implements Encodable, Decodable, Equatable, Comparable {
       let c = FROZEN_COMMITS.get(id);
       if (!c) {
         const decoder = JSONCyclicalDecoder.get(obj);
-        c = new Commit({ decoder, orgId });
+        c = new Commit({ decoder, orgId }, schemaManager);
         c._frozen = true;
         FROZEN_COMMITS.set(id, c);
         if (
@@ -364,7 +375,10 @@ export class Commit implements Encodable, Decodable, Equatable, Comparable {
     // }
     this._ancestorsCount = decoder.get<number>('ac');
     const contentsDecoder = decoder.getDecoder('c');
-    this._contents = commitContentsDeserialize(contentsDecoder);
+    this._contents = commitContentsDeserialize(
+      contentsDecoder,
+      this.schemaManager,
+    );
     if (contentsDecoder instanceof JSONCyclicalDecoder) {
       contentsDecoder.finalize();
     }
@@ -398,7 +412,7 @@ export function commitContentsIsDelta(c: CommitContents): c is DeltaContents {
   return typeof c.base === 'string';
 }
 
-export function commitContentsIsDocument<S extends Scheme>(
+export function commitContentsIsDocument<S extends Schema>(
   c: CommitContents,
 ): c is DocContents {
   return c.record instanceof Item;
@@ -416,10 +430,13 @@ export function commitContentsSerialize(
   }
 }
 
-export function commitContentsDeserialize(decoder: Decoder): CommitContents {
+export function commitContentsDeserialize(
+  decoder: Decoder,
+  schemaManager: SchemaManager,
+): CommitContents {
   if (decoder.has('r')) {
     const recordDecoder = decoder.getDecoder('r');
-    const record = new Item({ decoder: recordDecoder });
+    const record = new Item({ decoder: recordDecoder }, schemaManager);
     if (recordDecoder instanceof JSONCyclicalDecoder) {
       recordDecoder.finalize();
     }

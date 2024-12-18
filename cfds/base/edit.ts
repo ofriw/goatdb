@@ -3,7 +3,7 @@ import {
   DecodedDataChange,
   decodedDataChanges,
 } from './object.ts';
-import { Scheme, SchemeManager } from './scheme.ts';
+import { Schema, SchemaManager } from './schema.ts';
 import { JSONValue, ReadonlyJSONObject } from '../../base/interfaces.ts';
 import {
   JSONCyclicalDecoder,
@@ -38,7 +38,7 @@ export interface EditConfig {
   changes: DataChanges;
   srcChecksum: string;
   dstChecksum: string;
-  scheme?: Scheme;
+  scheme?: Schema;
 }
 
 export interface EncodedEdit {
@@ -49,17 +49,17 @@ export interface EncodedEdit {
 }
 
 export class Edit implements Encodable, Equatable, Clonable {
-  readonly schemeManager: SchemeManager;
+  readonly schemeManager: SchemaManager;
   readonly changes: DataChanges;
   readonly srcChecksum: string;
   readonly dstChecksum: string;
-  readonly scheme?: Scheme;
+  readonly scheme?: Schema;
 
   constructor(
     config: EditConfig | ConstructorDecoderConfig<EncodedEdit>,
-    schemeManager?: SchemeManager,
+    schemeManager?: SchemaManager,
   ) {
-    this.schemeManager = schemeManager || SchemeManager.default;
+    this.schemeManager = schemeManager || SchemaManager.default;
     if (isDecoderConfig(config)) {
       const decoder = config.decoder;
 

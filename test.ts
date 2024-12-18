@@ -1,11 +1,11 @@
 import { CoreObject, ReadonlyCoreObject } from './base/core-types/index.ts';
-import { SchemeFieldsDef, SchemeManager } from './cfds/base/scheme.ts';
+import { SchemaFieldsDef, SchemaManager } from './cfds/base/schema.ts';
 import { initRichText } from './cfds/richtext/tree.ts';
 import { GoatDB } from './db/db.ts';
 import { Query } from './repo/query.ts';
 import { Repository } from './repo/repo.ts';
 
-const kBaseFields: SchemeFieldsDef = {
+const kBaseFields: SchemaFieldsDef = {
   creationDate: {
     type: 'date',
     required: true,
@@ -20,7 +20,7 @@ const kBaseFields: SchemeFieldsDef = {
   },
 } as const;
 
-const kContentFields: SchemeFieldsDef = {
+const kContentFields: SchemaFieldsDef = {
   ...kBaseFields,
   createdBy: {
     type: 'string',
@@ -63,7 +63,7 @@ const kSchemeWorkspace = {
   },
 } as const;
 
-SchemeManager.default.register(kSchemeWorkspace);
+SchemaManager.default.register(kSchemeWorkspace);
 
 const kSchemeUser = {
   ns: 'users',
@@ -85,7 +85,7 @@ const kSchemeUser = {
   },
 } as const;
 
-SchemeManager.default.register(kSchemeUser);
+SchemaManager.default.register(kSchemeUser);
 
 const kSchemeUserSettings = {
   ns: 'user-settings',
@@ -113,7 +113,7 @@ const kSchemeUserSettings = {
   },
 } as const;
 
-SchemeManager.default.register(kSchemeUserSettings);
+SchemaManager.default.register(kSchemeUserSettings);
 
 const kSchemeNote = {
   ns: 'notes',
@@ -163,7 +163,7 @@ const kSchemeNote = {
   },
 } as const;
 
-SchemeManager.default.register(kSchemeNote);
+SchemaManager.default.register(kSchemeNote);
 
 const kSchemeTag = {
   ns: 'tags',
@@ -182,7 +182,7 @@ const kSchemeTag = {
   },
 } as const;
 
-SchemeManager.default.register(kSchemeTag);
+SchemaManager.default.register(kSchemeTag);
 
 const kSchemeView = {
   ns: 'views',
@@ -259,7 +259,7 @@ const kSchemeView = {
   },
 } as const;
 
-SchemeManager.default.register(kSchemeView);
+SchemaManager.default.register(kSchemeView);
 
 const kSchemeEvent = {
   ns: 'events',
@@ -272,7 +272,7 @@ const kSchemeEvent = {
   },
 } as const;
 
-SchemeManager.default.register(kSchemeEvent);
+SchemaManager.default.register(kSchemeEvent);
 
 async function main(): Promise<void> {
   const start = performance.now();

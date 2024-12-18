@@ -4,43 +4,43 @@ import { Commit } from './commit.ts';
 import { Emitter } from '../base/emitter.ts';
 import { NextEventLoopCycleTimer } from '../base/timer.ts';
 import { md51 } from '../external/md5.ts';
-import { Scheme } from '../cfds/base/scheme.ts';
+import { Schema } from '../cfds/base/schema.ts';
 import { BloomFilter } from '../base/bloom.ts';
 import { GoatDB } from '../db/db.ts';
 import { ReadonlyJSONValue } from '../base/interfaces.ts';
 
 const BLOOM_FPR = 0.01;
 
-export type Entry<S extends Scheme = Scheme> = [
+export type Entry<S extends Schema = Schema> = [
   key: string | null,
   item: Item<S>,
 ];
-export type PredicateInfo<S extends Scheme, CTX> = {
+export type PredicateInfo<S extends Schema, CTX> = {
   key: string;
   item: Item<S>;
   ctx: CTX;
 };
-export type Predicate<S extends Scheme, CTX extends ReadonlyJSONValue> = (
+export type Predicate<S extends Schema, CTX extends ReadonlyJSONValue> = (
   info: PredicateInfo<S, CTX>,
 ) => boolean;
 
-export type SortInfo<S extends Scheme, CTX> = {
+export type SortInfo<S extends Schema, CTX> = {
   left: Item<S>;
   right: Item<S>;
   keyLeft: string;
   keyRight: string;
   ctx: CTX;
 };
-export type SortDescriptor<S extends Scheme, CTX> = (
+export type SortDescriptor<S extends Schema, CTX> = (
   info: SortInfo<S, CTX>,
 ) => number;
-export type QuerySource<IS extends Scheme = Scheme, OS extends IS = IS> =
+export type QuerySource<IS extends Schema = Schema, OS extends IS = IS> =
   | Repository
   | Query<IS, OS, ReadonlyJSONValue>
   | string;
 
 export type QueryConfig<
-  IS extends Scheme,
+  IS extends Schema,
   OS extends IS,
   CTX extends ReadonlyJSONValue,
 > = {
@@ -56,7 +56,7 @@ export type QueryConfig<
 export type QueryEvent = EventDocumentChanged | 'LoadingFinished' | 'Closed';
 
 export class Query<
-  IS extends Scheme,
+  IS extends Schema,
   OS extends IS,
   CTX extends ReadonlyJSONValue,
 > extends Emitter<QueryEvent> {
@@ -83,6 +83,7 @@ export class Query<
   private _closed = false;
   private _cachedResults: { key: string; item: Item<OS> }[] | undefined;
   private _cachedResultsAge = 0;
+  private _loading: boolean = true;
 
   // static open<
   //   IS extends Scheme = Scheme,
@@ -156,6 +157,10 @@ export class Query<
 
   get age(): number {
     return this._age;
+  }
+
+  get loading(): boolean {
+    return this._loading;
   }
 
   has(key: string): boolean {
@@ -263,7 +268,7 @@ export class Query<
     if (!this._closed) {
       this.emit('Closed');
       this.repo.db.queryPersistence?.unregister(
-        this as unknown as Query<Scheme, Scheme, ReadonlyJSONValue>,
+        this as unknown as Query<Schema, Schema, ReadonlyJSONValue>,
       );
       if (this._sourceListenerCleanup) {
         this._sourceListenerCleanup();
@@ -278,7 +283,7 @@ export class Query<
   protected suspend(): void {
     if (!this._closed) {
       this.repo.db.queryPersistence?.unregister(
-        this as unknown as Query<Scheme, Scheme, ReadonlyJSONValue>,
+        this as unknown as Query<Schema, Schema, ReadonlyJSONValue>,
       );
       this._sourceListenerCleanup!();
       this._sourceListenerCleanup = undefined;
@@ -426,9 +431,10 @@ export class Query<
       if (!this._loadingFinished) {
         this._loadingFinished = true;
         this.repo.db.queryPersistence?.register(
-          this as unknown as Query<Scheme, Scheme, ReadonlyJSONValue>,
+          this as unknown as Query<Schema, Schema, ReadonlyJSONValue>,
         );
         await this.repo.db.queryPersistence?.flush(this.id);
+        this._loading = false;
         this.emit('LoadingFinished');
       }
     }
@@ -461,7 +467,7 @@ export class Query<
 const gGeneratedQueryIds = new Map<string, string>();
 
 function generateQueryId<
-  IS extends Scheme = Scheme,
+  IS extends Schema = Schema,
   OS extends IS = IS,
   CTX extends ReadonlyJSONValue = ReadonlyJSONValue,
 >(

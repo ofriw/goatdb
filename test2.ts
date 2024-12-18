@@ -3,7 +3,7 @@ import { uniqueId } from './base/common.ts';
 import { coreValueCompare } from './base/core-types/comparable.ts';
 import { assert } from './base/error.ts';
 import { randomInt } from './base/math.ts';
-import { SchemeManager } from './cfds/base/scheme.ts';
+import { SchemaManager } from './cfds/base/schema.ts';
 import { BloomFilter } from './cpp/bloom_filter.ts';
 import { GoatDB } from './db/db.ts';
 import { Query } from './repo/query.ts';
@@ -22,7 +22,7 @@ export const kSchemeNote = {
   },
 } as const;
 type SchemeNoteType = typeof kSchemeNote;
-SchemeManager.default.register(kSchemeNote);
+SchemaManager.default.register(kSchemeNote);
 
 const kWords = [
   'lorem',
@@ -135,9 +135,9 @@ const REPO_FILE_PATH =
 const DB_PATH = '/Users/ofri/Documents/ovvio/goatdb-test/';
 
 export async function testsMain(): Promise<void> {
-  // const fileStart = performance.now();
-  // await Deno.readFile(REPO_FILE_PATH);
-  // console.log(`File read in ${(performance.now() - fileStart) / 1000} sec`);
+  const fileStart = performance.now();
+  await Deno.readFile(REPO_FILE_PATH);
+  console.log(`File read in ${(performance.now() - fileStart) / 1000} sec`);
   // await BloomFilter.initNativeFunctions();
   const db = new GoatDB({
     path: DB_PATH,

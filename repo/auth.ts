@@ -1,6 +1,4 @@
 import { sessionIdFromSignature } from '../db/session.ts';
-import { UserPermission } from '../cfds/base/scheme-types.ts';
-import { SchemeNamespace } from '../cfds/base/scheme-types.ts';
 import { Authorizer, Repository, RepoStorage } from './repo.ts';
 
 const PERSONAL_WS_KEY_SUFFIX = '-ws';

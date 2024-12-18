@@ -2,11 +2,11 @@ import { CoreObject } from './base/core-types/base.ts';
 
 import { assert } from './base/error.ts';
 import { Item } from './cfds/base/item.ts';
-import { SchemeManager } from './cfds/base/scheme.ts';
+import { SchemaManager } from './cfds/base/schema.ts';
 import { Query, SortDescriptor } from './repo/query.ts';
 import { kSchemeNote } from './test2.ts';
 
-SchemeManager.default.register(kSchemeNote);
+SchemaManager.default.register(kSchemeNote);
 const gDocsSet = new Map<string, Item>();
 
 interface EntryPayload {
@@ -51,7 +51,7 @@ function parseFunction<T extends Function>(str: string): T {
 onmessage = (event: MessageEvent<Payload[]>) => {
   for (const e of event.data) {
     if (e.type === 'entry') {
-      const scheme = SchemeManager.default.decode(e.schemeId);
+      const scheme = SchemaManager.default.decode(e.schemeId);
       if (scheme) {
         const doc = new Item({
           scheme,

@@ -15,7 +15,7 @@ import { stableStringify } from '../base/json.ts';
 import { Commit, CommitSerializeOptions } from '../repo/commit.ts';
 import { uniqueId } from '../base/common.ts';
 import { Item } from '../cfds/base/item.ts';
-import { kSchemeSession, SchemeSessionType } from '../cfds/base/scheme.ts';
+import { kSchemaSession, SchemaSessionType } from '../cfds/base/schema.ts';
 import {
   decodeBase32URL,
   decodeBase32URLString,
@@ -291,6 +291,7 @@ export async function signCommit(
     mergeLeader: commit.mergeLeader,
     revert: commit.revert,
     orgId: commit.orgId,
+    schemaManager: commit.schemaManager,
   });
 }
 
@@ -388,7 +389,7 @@ export async function decodeSession(
 
 export async function sessionToRecord(
   session: Session,
-): Promise<Item<SchemeSessionType>> {
+): Promise<Item<SchemaSessionType>> {
   const encodedSession = await encodeSession(session);
   return encodedSessionToRecord(encodedSession);
 }
@@ -399,7 +400,7 @@ export async function sessionFromRecord(record: Item): Promise<Session> {
 
 export function encodedSessionToRecord(
   encodedSession: EncodedSession,
-): Item<SchemeSessionType> {
+): Item<SchemaSessionType> {
   const data = {
     ...encodedSession,
     publicKey: JSON.stringify(encodedSession.publicKey),
@@ -408,8 +409,8 @@ export function encodedSessionToRecord(
   // Private keys don't exist in the Session scheme, but just to be extra
   // cautious, we delete the field here as well.
   delete (data as any).privateKey;
-  return new Item<SchemeSessionType>({
-    scheme: kSchemeSession,
+  return new Item<SchemaSessionType>({
+    scheme: kSchemaSession,
     data,
   });
 }
@@ -509,6 +510,16 @@ export class TrustPool {
 
   get trustedSessions(): Session[] {
     return Array.from(this._sessions.values());
+  }
+
+  *sessions(): Generator<Session> {
+    yield this.currentSession;
+    for (const s of this.roots) {
+      yield s;
+    }
+    for (const s of this.trustedSessions) {
+      yield s;
+    }
   }
 
   /**

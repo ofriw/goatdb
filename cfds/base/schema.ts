@@ -7,7 +7,7 @@ import { RichText } from '../richtext/tree.ts';
 import { ValueType } from './types/index.ts';
 
 /**
- * A mapping between a scheme type and its native variable type.
+ * A mapping between a schema type and its native variable type.
  */
 export type FieldValue<T extends ValueType> = T extends 'string'
   ? string
@@ -26,7 +26,7 @@ export type FieldValue<T extends ValueType> = T extends 'string'
   : CoreValue;
 
 /**
- * A definition of a single field in a Scheme.
+ * A definition of a single field in a schema.
  */
 export type FieldDef<T extends ValueType> = {
   /**
@@ -60,35 +60,35 @@ export type FieldDef<T extends ValueType> = {
 /**
  * Mapping between field name and its definition.
  */
-export type SchemeFieldsDef = Record<string, FieldDef<ValueType>>;
+export type SchemaFieldsDef = Record<string, FieldDef<ValueType>>;
 
 /**
- * A Scheme defines the structure of a Document. Schemes are also versioned,
+ * A Schema defines the structure of a Document. Schemas are also versioned,
  * allowing for live, gradual migrations of data for some users, while others
  * continue to work with the old version in parallel.
  */
-export type Scheme = {
+export type Schema = {
   /**
-   * The namespace of this scheme. The `null` and `session` namespaces are
+   * The namespace of this schema. The `null` and `session` namespaces are
    * reserved for the GoatDB's use.
    */
   ns: null | string;
   /**
-   * The version of this scheme. Used to detect when a new version of a scheme
+   * The version of this schema. Used to detect when a new version of a schema
    * is available.
    */
   version: number;
   /**
-   * A definition of all fields declared by this scheme.
+   * A definition of all fields declared by this schema.
    */
-  fields: SchemeFieldsDef;
+  fields: SchemaFieldsDef;
   /**
    * An optional upgrade function, used to migrate documents from an older
-   * scheme to this scheme.
+   * schema to this schema.
    *
    * When upgrading a document, upgrade functions are run in order until
    * reaching the latest version available. For example, if a document is at
-   * scheme v1, and needs to be upgraded to v3, then first the upgrade function
+   * schema v1, and needs to be upgraded to v3, then first the upgrade function
    * of v2 will be run, then the result piped through the upgrade function of
    * v3.
    *
@@ -96,15 +96,15 @@ export type Scheme = {
    *             object directly. Instead, return a new one with the upgraded
    *             data.
    *
-   * @param scheme The scheme of the current data.
+   * @param schema The schema of the current data.
    *
-   * @returns An upgraded data that matches the current scheme.
+   * @returns An upgraded data that matches the current schema.
    */
-  upgrade?: (data: ReadonlyCoreObject, scheme: Scheme) => CoreObject;
+  upgrade?: (data: ReadonlyCoreObject, schema: Schema) => CoreObject;
 };
 
 /**
- * A list of built in fields that are automatically injected into all schemes.
+ * A list of built in fields that are automatically injected into all schemas.
  */
 const kBuiltinFields: Record<string, FieldDef<ValueType>> = {
   isDeleted: {
@@ -113,12 +113,12 @@ const kBuiltinFields: Record<string, FieldDef<ValueType>> = {
 } as const;
 
 /**
- * Given a scheme, extracts the names of all required fields.
+ * Given a schema, extracts the names of all required fields.
  * Note: For practical purposes, fields with a default function are treated
  * as required from the type system.
  */
-export type SchemeRequiredFields<
-  T extends Scheme,
+export type SchemaRequiredFields<
+  T extends Schema,
   K extends keyof T['fields'] = keyof T['fields'],
 > = T['fields'][K]['required'] extends true
   ? // deno-lint-ignore ban-types
@@ -128,10 +128,10 @@ export type SchemeRequiredFields<
   : never;
 
 /**
- * Given a scheme, extracts the names of all optional fields.
+ * Given a schema, extracts the names of all optional fields.
  */
-export type SchemeOptionalFields<
-  T extends Scheme,
+export type SchemaOptionalFields<
+  T extends Schema,
   K extends keyof T['fields'] = keyof T['fields'],
 > = T['fields'][K]['required'] extends false | undefined ? K : never;
 
@@ -139,7 +139,7 @@ export type SchemeOptionalFields<
  * Given a type (FieldValue) and a required + default function, this generates
  * the correct type or union with undefined.
  */
-export type SchemeValueWithOptional<
+export type SchemaValueWithOptional<
   T,
   R extends boolean | undefined,
   // deno-lint-ignore ban-types
@@ -148,10 +148,10 @@ export type SchemeValueWithOptional<
 > = R extends true ? T : D extends Function ? T : undefined | T;
 
 /**
- * Given a scheme, extracts the type of its data.
+ * Given a schema, extracts the type of its data.
  */
-export type SchemeDataType<T extends Scheme> = {
-  [k in keyof T['fields']]: SchemeValueWithOptional<
+export type SchemaDataType<T extends Schema> = {
+  [k in keyof T['fields']]: SchemaValueWithOptional<
     FieldValue<T['fields'][k]['type']>,
     T['fields'][k]['required'],
     T['fields'][k]['default']
@@ -159,24 +159,24 @@ export type SchemeDataType<T extends Scheme> = {
 };
 
 /**
- * The null scheme is used to reserver keys for documents that they're scheme
+ * The null schema is used to reserve keys for items that they're schema
  * isn't known yet. It's also used to simplify the internal diff/patch logic.
  *
- * Null records can't be persisted, and aren't synchronized across the network.
+ * Null items can't be persisted, and aren't synchronized across the network.
  */
-export const kNullScheme: Scheme = {
+export const kNullSchema: Schema = {
   ns: null,
   version: 0,
   fields: {},
-  upgrade: () => notReached('Attempting to upgrade the null scheme'),
+  upgrade: () => notReached('Attempting to upgrade the null schema'),
 } as const;
-export type SchemeNullType = typeof kNullScheme;
+export type SchemaNullType = typeof kNullSchema;
 
 /**
- * All connections to the DB are represented as Session documents, and are used
+ * All connections to the DB are represented as Session items, and are used
  * to verify the authenticity of commits.
  */
-export const kSchemeSession = {
+export const kSchemaSession = {
   ns: 'sessions',
   version: 1,
   fields: {
@@ -192,23 +192,47 @@ export const kSchemeSession = {
       type: 'date',
       required: true,
     },
+    // The key of the matching user from /sys/users
+    // NOTE: Anonymous sessions don't have an owner
     owner: {
-      type: 'string', // NOTE: Anonymous sessions don't have an owner
+      type: 'string',
     },
   },
 } as const;
-export type SchemeSessionType = typeof kSchemeSession;
+export type SchemaSessionType = typeof kSchemaSession;
 
 /**
- * The SchemeManager acts as a registry of known Schemes for a given GoatDB
+ * Each scheme is potentially linked to a specific user (unless it's an
+ * anonymous session). The user item stores personal login information for this
+ * user.
+ */
+export const kSchemaUser = {
+  ns: 'users',
+  version: 1,
+  fields: {
+    email: {
+      type: 'string',
+    },
+    firstName: {
+      type: 'string',
+    },
+    lastName: {
+      type: 'string',
+    },
+  },
+} as const;
+export type SchemaUserType = typeof kSchemaUser;
+
+/**
+ * The schemaManager acts as a registry of known schemas for a given GoatDB
  * instance. It's initialized when the app starts and stays fixed during its
  * execution.
  *
- * Typically, apps use the `SchemeManager.default` instance, but are free to
- * create multiple managers each with different schemes registered.
+ * Typically, apps use the `schemaManager.default` instance, but are free to
+ * create multiple managers each with different schemas registered.
  */
-export class SchemeManager {
-  private readonly _schemes: Map<string, Scheme[]>;
+export class SchemaManager {
+  private readonly _schemas: Map<string, Schema[]>;
 
   /**
    * The default manager. Unless explicitly specified, GoatDB will default to
@@ -217,50 +241,51 @@ export class SchemeManager {
   static readonly default = new this();
 
   /**
-   * Initialize a new SchemeManager.
-   * @param schemes An optional list of Schemes to register.
+   * Initialize a new schemaManager.
+   * @param schemas An optional list of schemas to register.
    */
-  constructor(schemes?: Iterable<Scheme>) {
-    this._schemes = new Map();
-    this.register(kSchemeSession);
-    if (schemes) {
-      for (const s of schemes) {
+  constructor(schemas?: Iterable<Schema>) {
+    this._schemas = new Map();
+    this.register(kSchemaSession);
+    this.register(kSchemaUser);
+    if (schemas) {
+      for (const s of schemas) {
         this.register(s);
       }
     }
   }
 
   /**
-   * Registers a scheme with this manager. This is a NOP if the scheme had
+   * Registers a schema with this manager. This is a NOP if the schema had
    * already been registered.
    *
-   * @param scheme The scheme to register.
+   * @param schema The schema to register.
    */
-  register(scheme: Scheme): void {
-    assert(scheme.ns !== null);
-    let arr = this._schemes.get(scheme.ns);
+  register(schema: Schema): void {
+    assert(schema.ns !== null);
+    let arr = this._schemas.get(schema.ns);
     if (!arr) {
       arr = [];
-      this._schemes.set(scheme.ns, arr);
+      this._schemas.set(schema.ns, arr);
     }
-    if (arr.find((s) => s.version === scheme.version) === undefined) {
-      arr.push(scheme);
+    if (arr.find((s) => s.version === schema.version) === undefined) {
+      arr.push(schema);
       arr.sort((s1, s2) => s2.version - s1.version);
     }
   }
 
   /**
-   * Find a scheme that's been registered with this manager.
+   * Find a schema that's been registered with this manager.
    *
-   * @param ns The namespace for the scheme.
+   * @param ns      The namespace for the schema.
    * @param version If provided, searches for the specific version. Otherwise
    *                this method will return the latest version for the passed
    *                namespace.
    *
-   * @returns A scheme or undefined if not found.
+   * @returns A schema or undefined if not found.
    */
-  get(ns: string, version?: number): Scheme | undefined {
-    const arr = this._schemes.get(ns);
+  get(ns: string, version?: number): Schema | undefined {
+    const arr = this._schemas.get(ns);
     if (!arr) {
       return undefined;
     }
@@ -268,82 +293,82 @@ export class SchemeManager {
   }
 
   /**
-   * Given a data object and its scheme, this method performs the upgrade
-   * procedure to the target scheme.
+   * Given a data object and its schema, this method performs the upgrade
+   * procedure to the target schema.
    *
-   * This method will refuse to upgrade to the target scheme if a single version
+   * This method will refuse to upgrade to the target schema if a single version
    * is missing. For example, if attempting to upgrade from v1 to v3, but the
-   * v2 scheme is missing, then the upgrade will be refused.
+   * v2 schema is missing, then the upgrade will be refused.
    *
    * NOTE: You shouldn't use this method directly under normal circumstances.
    * The upgrade procedure will be performed automatically for you when needed.
    *
    * @param data         The data to upgrade.
-   * @param dataScheme   The scheme of the passed data.
-   * @param targetScheme The target scheme. If not provided, the latest scheme
+   * @param dataSchema   The schema of the passed data.
+   * @param targetSchema The target schema. If not provided, the latest schema
    *                     for the namespace will be used.
    *
-   * @returns An array in the form of [data, scheme] with the result. Returns
+   * @returns An array in the form of [data, schema] with the result. Returns
    *          undefined if the upgrade failed.
    */
   upgrade(
     data: CoreObject,
-    dataScheme: Scheme,
-    targetScheme?: Scheme,
-  ): [CoreObject, Scheme] | undefined {
+    dataSchema: Schema,
+    targetSchema?: Schema,
+  ): [CoreObject, Schema] | undefined {
     if (
-      (targetScheme === undefined || targetScheme.ns === null) &&
-      dataScheme.ns === null
+      (targetSchema === undefined || targetSchema.ns === null) &&
+      dataSchema.ns === null
     ) {
-      return [data, kNullScheme];
+      return [data, kNullSchema];
     }
     assert(
-      dataScheme.ns !== null ||
-        (targetScheme !== undefined && targetScheme.ns !== null),
+      dataSchema.ns !== null ||
+        (targetSchema !== undefined && targetSchema.ns !== null),
     );
-    const ns = targetScheme?.ns || dataScheme.ns!;
-    const latest = this.get(ns, targetScheme?.version);
-    if (!latest || latest.version === dataScheme.version) {
-      return [data, dataScheme];
+    const ns = targetSchema?.ns || dataSchema.ns!;
+    const latest = this.get(ns, targetSchema?.version);
+    if (!latest || latest.version === dataSchema.version) {
+      return [data, dataSchema];
     }
 
-    let currentScheme = dataScheme;
+    let currentSchema = dataSchema;
     let upgradedData = coreValueClone(data);
-    for (let i = dataScheme.version + 1; i <= latest.version; ++i) {
-      const scheme = this.get(ns, i);
-      if (!scheme) {
+    for (let i = dataSchema.version + 1; i <= latest.version; ++i) {
+      const schema = this.get(ns, i);
+      if (!schema) {
         return undefined;
       }
-      if (scheme.upgrade) {
-        upgradedData = scheme.upgrade(upgradedData, currentScheme);
+      if (schema.upgrade) {
+        upgradedData = schema.upgrade(upgradedData, currentSchema);
       }
-      currentScheme = scheme;
+      currentSchema = schema;
     }
-    return [upgradedData, currentScheme];
+    return [upgradedData, currentSchema];
   }
 
   /**
-   * Encoded a scheme to a marker string for storage.
-   * @param scheme The scheme to encode.
-   * @returns A string marker for this scheme.
+   * Encoded a schema to a marker string for storage.
+   * @param schema The schema to encode.
+   * @returns A string marker for this schema.
    */
-  encode(scheme: Scheme): string {
-    if (scheme.ns === null) {
+  encode(schema: Schema): string {
+    if (schema.ns === null) {
       return 'null';
     }
-    return `${scheme.ns}/${scheme.version}`;
+    return `${schema.ns}/${schema.version}`;
   }
 
   /**
-   * Decodes a scheme marker to an actual Scheme.
-   * @param str The scheme marker produced by a previous call to
-   *            `SchemeManager.encode`.
+   * Decodes a schema marker to an actual schema.
+   * @param str The schema marker produced by a previous call to
+   *            `schemaManager.encode`.
    *
-   * @returns The registered scheme or undefined if no such scheme is found.
+   * @returns The registered schema or undefined if no such schema is found.
    */
-  decode(str: string /*| Decoder*/): Scheme | undefined {
+  decode(str: string /*| Decoder*/): Schema | undefined {
     if (str === 'null') {
-      return kNullScheme;
+      return kNullSchema;
     }
     if (typeof str === 'string') {
       const [ns, ver] = str.split('/');
@@ -358,57 +383,57 @@ export class SchemeManager {
   }
 }
 
-const gCachedSchemeFields = new WeakMap<
-  Scheme,
+const gCachedSchemaFields = new WeakMap<
+  Schema,
   [string, FieldDef<ValueType>][]
 >();
 
 /**
- * Given a scheme, this function returns its field definitions as an iterable.
- * @param s A scheme.
+ * Given a schema, this function returns its field definitions as an iterable.
+ * @param s A schema.
  * @returns An iterable of field name and its definition.
  */
-export function SchemeGetFields(
-  s: Scheme,
+export function SchemaGetFields(
+  s: Schema,
 ): readonly [string, FieldDef<ValueType>][] {
-  let r = gCachedSchemeFields.get(s);
+  let r = gCachedSchemaFields.get(s);
   if (!r) {
     r = Object.entries(s.fields).concat(Object.entries(kBuiltinFields));
     Object.freeze(r);
-    gCachedSchemeFields.set(s, r);
+    gCachedSchemaFields.set(s, r);
   }
   return r;
 }
 
-const gCachedSchemeRequiredFields = new WeakMap<Scheme, string[]>();
+const gCachedSchemaRequiredFields = new WeakMap<Schema, string[]>();
 /**
- * Given a scheme, this functions returns an iterable of its required fields.
- * @param s A scheme.
+ * Given a schema, this functions returns an iterable of its required fields.
+ * @param s A schema.
  * @returns An iterable of required field names.
  */
-export function SchemeGetRequiredFields(s: Scheme): readonly string[] {
-  let r = gCachedSchemeRequiredFields.get(s);
+export function SchemaGetRequiredFields(s: Schema): readonly string[] {
+  let r = gCachedSchemaRequiredFields.get(s);
   if (!r) {
     r = [];
-    for (const [fieldName, def] of SchemeGetFields(s)) {
+    for (const [fieldName, def] of SchemaGetFields(s)) {
       if (def.required === true) {
         r.push(fieldName);
       }
     }
     Object.freeze(r);
-    gCachedSchemeRequiredFields.set(s, r);
+    gCachedSchemaRequiredFields.set(s, r);
   }
   return r;
 }
 
 /**
- * Given a scheme and a field, returns its
+ * Given a schema and a field, returns its
  * @param s
  * @param field
  * @returns
  */
-export function SchemeGetFieldDef<
-  S extends Scheme,
+export function SchemaGetFieldDef<
+  S extends Schema,
   F extends string & (keyof S['fields'] | keyof typeof kBuiltinFields),
 >(s: S, field: F): FieldDef<S['fields'][F]['type']> | undefined {
   const def = s.fields[field] || kBuiltinFields[field];
@@ -419,11 +444,11 @@ export function SchemeGetFieldDef<
 }
 
 /**
- * Given two schemes, returns whether they're the same one or not.
- * @param s1 First scheme.
- * @param s2 Second scheme.
- * @returns true if the schemes are the same, false otherwise.
+ * Given two schemas, returns whether they're the same one or not.
+ * @param s1 First schema.
+ * @param s2 Second schema.
+ * @returns true if the schemas are the same, false otherwise.
  */
-export function SchemeEquals(s1: Scheme, s2: Scheme): boolean {
+export function SchemaEquals(s1: Schema, s2: Schema): boolean {
   return s1.ns === s2.ns && s1.version === s2.version;
 }

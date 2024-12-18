@@ -1,4 +1,4 @@
-import { SchemeManager } from '../../cfds/base/scheme.ts';
+import { SchemaManager } from '../../cfds/base/schema.ts';
 
 // export const kSchemeUser = {
 //   ns: 'user',
@@ -32,9 +32,9 @@ import { SchemeManager } from '../../cfds/base/scheme.ts';
 //   },
 // } as const;
 // type SchemeMessageType = typeof kSchemeMessage;
-// SchemeManager.default.register(kSchemeMessage);
+// SchemaManager.default.register(kSchemeMessage);
 
-export const kSchemeTask = {
+export const kSchemaTask = {
   ns: 'task',
   version: 1,
   fields: {
@@ -44,5 +44,5 @@ export const kSchemeTask = {
     },
   },
 } as const;
-type SchemeTaskType = typeof kSchemeTask;
-SchemeManager.default.register(kSchemeTask);
+type SchemeTaskType = typeof kSchemaTask;
+SchemaManager.default.register(kSchemaTask);

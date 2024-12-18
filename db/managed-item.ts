@@ -1,4 +1,4 @@
-import { Scheme, SchemeDataType } from '../cfds/base/scheme.ts';
+import { Schema, SchemaDataType } from '../cfds/base/schema.ts';
 import { Commit } from '../repo/commit.ts';
 import { Repository } from '../repo/repo.ts';
 import { itemPathGetPart, itemPathGetRepoId, ItemPathPart } from './path.ts';
@@ -8,7 +8,7 @@ import { MutationPack, mutationPackAppend } from './mutations.ts';
 import { SimpleTimer, Timer } from '../base/timer.ts';
 import { GoatDB } from './db.ts';
 
-export class ManagedItem<S extends Scheme = Scheme> extends Emitter<'change'> {
+export class ManagedItem<S extends Schema = Schema> extends Emitter<'change'> {
   private readonly _commitDelayTimer: Timer;
   private _head?: Commit;
   private _doc!: Item<S>;
@@ -84,26 +84,26 @@ export class ManagedItem<S extends Scheme = Scheme> extends Emitter<'change'> {
     }
   }
 
-  has<T extends keyof SchemeDataType<S>>(key: string & T): boolean {
+  has<T extends keyof SchemaDataType<S>>(key: string & T): boolean {
     return this._doc.has(key);
   }
 
-  get<K extends keyof SchemeDataType<S>>(
+  get<K extends keyof SchemaDataType<S>>(
     key: K & string,
-  ): SchemeDataType<S>[K] {
+  ): SchemaDataType<S>[K] {
     return this._doc.get(key);
   }
 
-  set<T extends keyof SchemeDataType<S>>(
+  set<T extends keyof SchemaDataType<S>>(
     key: string & T,
-    value: SchemeDataType<S>[T],
+    value: SchemaDataType<S>[T],
   ): void {
     const oldValue = this.has(key) ? this.get(key) : undefined;
     this._doc.set(key, value);
     this.onChange([key, true, oldValue]);
   }
 
-  delete<T extends keyof SchemeDataType<S>>(key: string & T): boolean {
+  delete<T extends keyof SchemaDataType<S>>(key: string & T): boolean {
     const oldValue = this.has(key) ? this.get(key) : undefined;
     if (this._doc.delete(key)) {
       this.onChange([key, true, oldValue]);
@@ -167,7 +167,7 @@ export class ManagedItem<S extends Scheme = Scheme> extends Emitter<'change'> {
   }
 
   private onChange(
-    mutations: MutationPack<keyof SchemeDataType<S> & string>,
+    mutations: MutationPack<keyof SchemaDataType<S> & string>,
   ): void {
     this.emit('change', mutations);
     // this._commitDelayTimer.schedule();

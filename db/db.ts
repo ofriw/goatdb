@@ -1,5 +1,5 @@
 import * as path from 'std/path/mod.ts';
-import { TrustPool } from './session.ts';
+import { Session, TrustPool } from './session.ts';
 import { Repository, RepositoryConfig } from '../repo/repo.ts';
 import { DBSettingsProvider } from './settings/settings.ts';
 import { FileSettings } from './settings/file.ts';
@@ -9,10 +9,9 @@ import { RepoClient } from '../net/client.ts';
 import { kSyncConfigClient, kSyncConfigServer } from '../net/sync-scheduler.ts';
 import { SyncScheduler } from '../net/sync-scheduler.ts';
 import { QueryPersistence } from '../repo/query-persistance.ts';
-import { RepositoryPersistance } from './persistance/repo.ts';
 import { QueryPersistenceFile } from './persistance/query-file.ts';
 import { ManagedItem } from './managed-item.ts';
-import { Scheme } from '../cfds/base/scheme.ts';
+import { Schema, SchemaManager } from '../cfds/base/schema.ts';
 import {
   itemPathGetPart,
   itemPathGetRepoId,
@@ -20,9 +19,8 @@ import {
   ItemPathPart,
 } from './path.ts';
 import { isBrowser, uniqueId } from '../base/common.ts';
-import { SchemeDataType } from '../cfds/base/scheme.ts';
+import { SchemaDataType } from '../cfds/base/schema.ts';
 import { Item } from '../cfds/base/item.ts';
-import { SimpleTimer, Timer } from '../base/timer.ts';
 import {
   JSONLogFile,
   JSONLogFileAppend,
@@ -33,29 +31,42 @@ import {
   JSONLogFileStartCursor,
   startJSONLogWorkerIfNeeded,
 } from '../base/json-log/json-log.ts';
-import {
-  ReadonlyJSONArray,
-  ReadonlyJSONObject,
-  ReadonlyJSONValue,
-} from '../base/interfaces.ts';
+import { ReadonlyJSONObject, ReadonlyJSONValue } from '../base/interfaces.ts';
 import { BloomFilter } from '../cpp/bloom_filter.ts';
-import { MemRepoStorage } from '../repo/repo.ts';
 import { QueryConfig, Query } from '../repo/query.ts';
 import { md51 } from '../external/md5.ts';
+
+export type AuthOp = 'read' | 'write';
+
+export type AuthRule = (
+  db: GoatDB,
+  repoPath: string,
+  itemKey: string,
+  session: Session,
+  op: AuthOp,
+) => boolean;
+
+export type AuthConfig = {
+  path: RegExp | string;
+  rule: AuthRule;
+}[];
 
 export interface DBConfig {
   path: string;
   orgId?: string;
   peers?: string | Iterable<string>;
+  schemaManager?: SchemaManager;
+  authRules?: AuthConfig;
 }
 
-export type OpenOptions = Omit<RepositoryConfig, 'storage'>;
+export type OpenOptions = Omit<RepositoryConfig, 'storage' | 'authorizer'>;
 
 startJSONLogWorkerIfNeeded();
 
 export class GoatDB {
   readonly orgId: string;
   readonly path: string;
+  readonly schemaManager: SchemaManager;
   readonly queryPersistence?: QueryPersistence;
   private readonly _settingsProvider: DBSettingsProvider;
   private readonly _repositories: Map<string, Repository>;
@@ -66,18 +77,21 @@ export class GoatDB {
   private readonly _items: Map<string, ManagedItem>;
   private readonly _openQueries = new Map<
     string,
-    Query<Scheme, Scheme, ReadonlyJSONValue>
+    Query<Schema, Schema, ReadonlyJSONValue>
   >();
+  private readonly _authConfig: AuthConfig;
   private _trustPool: TrustPool | undefined;
   private _syncSchedulers: SyncScheduler[] | undefined;
 
   constructor(config: DBConfig) {
     this.path = config.path;
+    this.schemaManager = config.schemaManager || SchemaManager.default;
     this._settingsProvider =
       typeof self.Deno === 'undefined'
         ? new IDBSettings()
         : new FileSettings(this.path);
     this.orgId = config?.orgId || 'localhost';
+    this._authConfig = config.authRules || [];
     this._repositories = new Map();
     this._openPromises = new Map();
     this._files = new Map();
@@ -168,7 +182,7 @@ export class GoatDB {
    * @param pathComps A full path or path components.
    * @returns A managed item that tracks both local and remote edits.
    */
-  item<S extends Scheme>(...pathComps: string[]): ManagedItem<S> {
+  item<S extends Schema>(...pathComps: string[]): ManagedItem<S> {
     const path = itemPathNormalize(pathComps.join('/'));
     let item = this._items.get(path);
     if (!item) {
@@ -192,10 +206,10 @@ export class GoatDB {
    * @param scheme The scheme to create the item with.
    * @param data The initial data for the item.
    */
-  async create<S extends Scheme>(
+  async create<S extends Schema>(
     path: string,
     scheme: S,
-    data: SchemeDataType<S>,
+    data: SchemaDataType<S>,
   ): Promise<void> {
     const repo = await this.open(path);
     let key = itemPathGetPart(path, ItemPathPart.Item);
@@ -204,10 +218,13 @@ export class GoatDB {
     }
     await repo.setValueForKey(
       key,
-      new Item<S>({
-        scheme,
-        data,
-      }),
+      new Item<S>(
+        {
+          scheme,
+          data,
+        },
+        this.schemaManager,
+      ),
       undefined,
     );
   }
@@ -242,11 +259,14 @@ export class GoatDB {
   }
 
   /**
-   * Open a new query or access an already open one.
-   * @param config
-   * @returns
+   * Open a new query or access an already open one. Once opened, the query
+   * remains open until explicitly closed, and tracks updates to items as they
+   * happen.
+   *
+   * @param config The configuration for the desired query.
+   * @returns A live query instance.
    */
-  query<IS extends Scheme, CTX extends ReadonlyJSONValue, OS extends IS = IS>(
+  query<IS extends Schema, CTX extends ReadonlyJSONValue, OS extends IS = IS>(
     config: Omit<QueryConfig<IS, OS, CTX>, 'db'>,
   ): Query<IS, OS, CTX> {
     let id = config.id;
@@ -260,8 +280,8 @@ export class GoatDB {
     let q = this._openQueries.get(id);
     if (!q) {
       q = new Query({ ...config, db: this }) as unknown as Query<
-        Scheme,
-        Scheme,
+        Schema,
+        Schema,
         ReadonlyJSONValue
       >;
       q.once('Closed', () => {
@@ -275,6 +295,15 @@ export class GoatDB {
   }
 
   async getTrustPool(): Promise<TrustPool> {
+    if (await this.createTrustPoolIfNeeded()) {
+      // Open /sys/sessions so all known sessions are properly loaded into our
+      // new trust pool
+      await this.open('/sys/sessions');
+    }
+    return this._trustPool!;
+  }
+
+  async createTrustPoolIfNeeded(): Promise<boolean> {
     if (!this._trustPool) {
       await this._settingsProvider.load();
       const settings = this._settingsProvider.settings;
@@ -291,8 +320,9 @@ export class GoatDB {
             new SyncScheduler(url, syncConfig, this._trustPool!, this.orgId),
         );
       }
+      return true;
     }
-    return this._trustPool;
+    return false;
   }
 
   private async _openImpl(
@@ -301,7 +331,19 @@ export class GoatDB {
   ): Promise<Repository> {
     await BloomFilter.initNativeFunctions();
     repoId = Repository.normalizeId(repoId);
-    const repo = new Repository(this, repoId, await this.getTrustPool(), opts);
+    let trustPool: TrustPool;
+    // Special Case: /sys/sessions needs to skip the call to loadSysSessions()
+    // to avoid a loop.
+    if (repoId === '/sys/sessions') {
+      await this.createTrustPoolIfNeeded();
+      trustPool = this._trustPool!;
+    } else {
+      trustPool = await this.getTrustPool();
+    }
+    const repo = new Repository(this, repoId, trustPool, {
+      ...opts,
+      authorizer: authRuleForRepo(repoId, this._authConfig),
+    });
     this._repositories.set(repoId, repo);
     const file = await JSONLogFileOpen(
       path.join(this.path, relativePathForRepo(repoId)),
@@ -319,7 +361,7 @@ export class GoatDB {
       [entries, done] = await nextPromise;
       nextPromise = JSONLogFileScan(cursor);
       // [entries, done] = await JSONLogFileScan(cursor);
-      const commits = Commit.fromJSArr(this.orgId, entries);
+      const commits = Commit.fromJSArr(this.orgId, entries, this.schemaManager);
       // for (const c of commits) {
       //   commitIds.add(c.id);
       // }
@@ -369,4 +411,61 @@ export class GoatDB {
 function relativePathForRepo(repoId: string): string {
   const [storage, id] = Repository.parseId(Repository.normalizeId(repoId));
   return path.join(storage, id + '.jsonl');
+}
+
+const kBuiltinAuthRules: AuthConfig = [
+  {
+    path: '/sys/users',
+    rule: (_db, _repoPath, itemKey, session, op) => {
+      if (session.owner === 'root') {
+        return true;
+      }
+      if (session.owner === itemKey) {
+        return true;
+      }
+      return op === 'read';
+    },
+  },
+  {
+    path: '/sys/sessions',
+    rule: (_db, _repoPath, _itemKey, session, op) => {
+      if (session.owner === 'root') {
+        return true;
+      }
+      return op === 'read';
+    },
+  },
+  // Reserving /sys/* for the system's use
+  {
+    path: /[/]sys[/]\S*/g,
+    rule: (_db, _repoPath, _itemKey, session, _op) => {
+      return session.owner === 'root';
+    },
+  },
+] as const;
+
+function authRuleForRepo(
+  repoPath: string,
+  config: AuthConfig,
+): AuthRule | undefined {
+  const id = Repository.normalizeId(repoPath);
+  // Builtin rules override user-provided ones
+  for (const { path, rule } of kBuiltinAuthRules) {
+    if (path === id) {
+      return rule;
+    }
+  }
+  // Look for a user-provided rule
+  for (const { path, rule } of config) {
+    if (typeof path === 'string') {
+      if (Repository.normalizeId(path) === id) {
+        return rule;
+      }
+    } else {
+      path.lastIndex = 0;
+      if (path.test(repoPath)) {
+        return rule;
+      }
+    }
+  }
 }

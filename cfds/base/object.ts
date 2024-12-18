@@ -6,12 +6,12 @@ import {
   ReadonlyDecodedObject,
 } from '../../base/core-types/encoding/index.ts';
 import {
-  Scheme,
-  SchemeDataType,
-  SchemeGetFieldDef,
-  SchemeGetFields,
-  SchemeGetRequiredFields,
-} from './scheme.ts';
+  Schema,
+  SchemaDataType,
+  SchemaGetFieldDef,
+  SchemaGetFields,
+  SchemaGetRequiredFields,
+} from './schema.ts';
 import {
   getTypeOperations,
   SerializeValueTypeOptions,
@@ -23,19 +23,19 @@ import { decodeChange } from '../change/decode.ts';
 import { CoreObject, CoreValue, Encoder } from '../../base/core-types/index.ts';
 import { log } from '../../logging/log.ts';
 
-export function isValidData<S extends Scheme = Scheme>(
+export function isValidData<S extends Schema = Schema>(
   scheme: S,
-  data: SchemeDataType<S>,
+  data: SchemaDataType<S>,
 ) {
   // Check missing required fields
-  for (const field of SchemeGetRequiredFields(scheme)) {
+  for (const field of SchemaGetRequiredFields(scheme)) {
     if (!Object.hasOwn(data, field)) {
       return [false, `Missing required field "${field}"`];
     }
   }
   // Make sure all fields have their correct types and sane values
   for (const key in data) {
-    const def = SchemeGetFieldDef(scheme, key);
+    const def = SchemaGetFieldDef(scheme, key);
     if (!def) {
       return [false, `Unknown field ${key}`];
     }
@@ -47,10 +47,10 @@ export function isValidData<S extends Scheme = Scheme>(
   return [true, ''];
 }
 
-export function serialize<S extends Scheme>(
+export function serialize<S extends Schema>(
   encoder: Encoder,
-  scheme: Scheme,
-  data: SchemeDataType<S>,
+  scheme: Schema,
+  data: SchemaDataType<S>,
   options: SerializeValueTypeOptions = {},
   overrides: {
     [key: string]: (
@@ -65,7 +65,7 @@ export function serialize<S extends Scheme>(
     return;
   }
   for (const key in data) {
-    const def = SchemeGetFieldDef(scheme, key);
+    const def = SchemaGetFieldDef(scheme, key);
     assert(def !== undefined, `Unknown field ${key}`);
     const type = def.type;
     if (overrides[type]) {
@@ -92,7 +92,7 @@ export function serialize<S extends Scheme>(
   }
 }
 
-export function deserialize<S extends Scheme>(
+export function deserialize<S extends Schema>(
   decoder: Decoder,
   scheme: S,
   options: ValueTypeOptions = {},
@@ -102,10 +102,10 @@ export function deserialize<S extends Scheme>(
       options: ValueTypeOptions,
     ) => CoreValue;
   } = {},
-): SchemeDataType<S> {
+): SchemaDataType<S> {
   const data: CoreObject = {};
 
-  for (const [key, def] of SchemeGetFields(scheme)) {
+  for (const [key, def] of SchemaGetFields(scheme)) {
     assert(def !== undefined, `Unknown field ${key}`);
     const type = def.type;
 
@@ -138,13 +138,13 @@ export function deserialize<S extends Scheme>(
     }
   }
 
-  return data as SchemeDataType<S>;
+  return data as SchemaDataType<S>;
 }
 
-export function equals<S extends Scheme>(
+export function equals<S extends Schema>(
   scheme: S,
-  data1: SchemeDataType<S>,
-  data2: SchemeDataType<S>,
+  data1: SchemaDataType<S>,
+  data2: SchemaDataType<S>,
   options: ValueTypeOptions = {},
 ): boolean {
   if (!data1 && !data2) {
@@ -157,7 +157,7 @@ export function equals<S extends Scheme>(
     return false;
   }
 
-  for (const [key, def] of SchemeGetFields(scheme)) {
+  for (const [key, def] of SchemaGetFields(scheme)) {
     if (!valueTypeEquals(def.type, data1[key], data2[key], options)) {
       return false;
     }
@@ -166,14 +166,14 @@ export function equals<S extends Scheme>(
   return true;
 }
 
-export function clone<S extends Scheme>(
+export function clone<S extends Schema>(
   scheme: S,
-  data: SchemeDataType<S>,
-  onlyFields?: (keyof SchemeDataType<S>)[],
-): SchemeDataType<S> {
+  data: SchemaDataType<S>,
+  onlyFields?: (keyof SchemaDataType<S>)[],
+): SchemaDataType<S> {
   const result: CoreObject = {};
   for (const key of Object.keys(data)) {
-    const def = SchemeGetFieldDef(scheme, key);
+    const def = SchemaGetFieldDef(scheme, key);
     if (!def) {
       continue;
     }
@@ -189,13 +189,13 @@ export function clone<S extends Scheme>(
     const typeOP = getTypeOperations(type);
     result[key] = typeOP.clone(value);
   }
-  return result as SchemeDataType<S>;
+  return result as SchemaDataType<S>;
 }
 
-export function diff<S extends Scheme>(
+export function diff<S extends Schema>(
   scheme: S,
-  data1: SchemeDataType<S>,
-  data2: SchemeDataType<S>,
+  data1: SchemaDataType<S>,
+  data2: SchemaDataType<S>,
   options: ValueTypeOptions = {},
 ): DataChanges {
   const changes: DataChanges = {};
@@ -217,7 +217,7 @@ export function diff<S extends Scheme>(
     }
   };
 
-  for (const [key, def] of SchemeGetFields(scheme)) {
+  for (const [key, def] of SchemaGetFields(scheme)) {
     if (!def) {
       continue;
     }
@@ -247,14 +247,14 @@ export function diff<S extends Scheme>(
   return changes;
 }
 
-export function patch<S extends Scheme>(
+export function patch<S extends Schema>(
   scheme: S,
-  data: SchemeDataType<S>,
+  data: SchemaDataType<S>,
   changes: DataChanges,
   options: ValueTypeOptions = {},
-): SchemeDataType<S> {
+): SchemaDataType<S> {
   for (const field in changes) {
-    const def = SchemeGetFieldDef(scheme, field);
+    const def = SchemaGetFieldDef(scheme, field);
     if (!def) {
       continue;
     }
@@ -271,11 +271,11 @@ export function patch<S extends Scheme>(
   return data;
 }
 
-export function normalize<S extends Scheme>(
+export function normalize<S extends Schema>(
   scheme: S,
-  data: SchemeDataType<S>,
+  data: SchemaDataType<S>,
 ): void {
-  for (const [key, def] of SchemeGetFields(scheme)) {
+  for (const [key, def] of SchemaGetFields(scheme)) {
     let value: CoreValue = data[key];
 
     const typeOP = getTypeOperations(def.type);
@@ -295,23 +295,23 @@ export function normalize<S extends Scheme>(
   }
 }
 
-export function diffKeys<S extends Scheme>(
+export function diffKeys<S extends Schema>(
   scheme: S,
-  data1: SchemeDataType<S>,
-  data2: SchemeDataType<S>,
+  data1: SchemaDataType<S>,
+  data2: SchemaDataType<S>,
   options: ValueTypeOptions = {},
 ): string[] {
   const result = new Set<string>();
 
   for (const key of Object.keys(data1)) {
-    if (SchemeGetFieldDef(scheme, key) && !Object.hasOwn(data2, key)) {
+    if (SchemaGetFieldDef(scheme, key) && !Object.hasOwn(data2, key)) {
       //Key not found in data2
       result.add(key);
     }
   }
 
   for (const key of Object.keys(data2)) {
-    const def = SchemeGetFieldDef(scheme, key);
+    const def = SchemaGetFieldDef(scheme, key);
     if (!def) {
       continue;
     }

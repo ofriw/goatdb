@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { GoatDB, type DBConfig } from '../db/db.ts';
-import { Scheme } from '../cfds/base/scheme.ts';
+import { Schema } from '../cfds/base/schema.ts';
 import { ManagedItem } from '../db/managed-item.ts';
 import { MutationPack, mutationPackHasField } from '../db/mutations.ts';
 import { ReadonlyJSONValue } from '../base/interfaces.ts';
@@ -31,21 +31,21 @@ export type UseItemOpts = {
   keys?: string | string[];
 };
 
-export function useItem<S extends Scheme>(
+export function useItem<S extends Schema>(
   opts: UseItemOpts,
   ...pathCompsOrOpts: string[]
 ): ManagedItem<S>;
 
-export function useItem<S extends Scheme>(
+export function useItem<S extends Schema>(
   path: string,
   opts: UseItemOpts,
 ): ManagedItem<S>;
 
-export function useItem<S extends Scheme>(
+export function useItem<S extends Schema>(
   ...pathCompsOrOpts: string[]
 ): ManagedItem<S>;
 
-export function useItem<S extends Scheme>(
+export function useItem<S extends Schema>(
   ...pathCompsOrOpts: (string | UseItemOpts)[]
 ): ManagedItem<S> {
   const db = useDB();
@@ -80,7 +80,7 @@ export function useItem<S extends Scheme>(
 }
 
 export interface UseQueryOpts<
-  IS extends Scheme,
+  IS extends Schema,
   CTX extends ReadonlyJSONValue,
   OS extends IS = IS,
 > extends Omit<QueryConfig<IS, OS, CTX>, 'db'> {
@@ -88,7 +88,7 @@ export interface UseQueryOpts<
 }
 
 export function useQuery<
-  IS extends Scheme,
+  IS extends Schema,
   CTX extends ReadonlyJSONValue,
   OS extends IS = IS,
 >(config: UseQueryOpts<IS, CTX, OS>): Query<IS, OS, CTX> {

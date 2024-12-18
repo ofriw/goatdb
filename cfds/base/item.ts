@@ -1,12 +1,12 @@
 import { assert } from '../../base/error.ts';
 import {
-  Scheme,
-  SchemeDataType,
-  SchemeEquals,
-  SchemeManager,
-  SchemeRequiredFields,
-  kNullScheme,
-} from './scheme.ts';
+  Schema,
+  SchemaDataType,
+  SchemaEquals,
+  SchemaManager,
+  SchemaRequiredFields,
+  kNullSchema,
+} from './schema.ts';
 import {
   clone,
   DataChanges,
@@ -41,21 +41,21 @@ import {
   Encoder,
   coreValueEquals,
 } from '../../base/core-types/index.ts';
-import { SchemeGetFieldDef } from './scheme.ts';
+import { SchemaGetFieldDef } from './schema.ts';
 
-export interface ReadonlyItem<S extends Scheme> {
+export interface ReadonlyItem<S extends Schema> {
   readonly isNull: boolean;
   readonly scheme: S;
   readonly isValid: boolean;
   readonly checksum: string;
-  get<K extends keyof SchemeDataType<S>>(key: K): SchemeDataType<S>[K];
-  has(key: keyof SchemeDataType<S>): boolean;
-  cloneData(): SchemeDataType<S>;
+  get<K extends keyof SchemaDataType<S>>(key: K): SchemaDataType<S>[K];
+  has(key: keyof SchemaDataType<S>): boolean;
+  cloneData(): SchemaDataType<S>;
 }
 
-export interface ItemConfig<S extends Scheme> {
+export interface ItemConfig<S extends Schema> {
   scheme: S;
-  data: Pick<SchemeDataType<S>, SchemeRequiredFields<S>> | SchemeDataType<S>;
+  data: Pick<SchemaDataType<S>, SchemaRequiredFields<S>> | SchemaDataType<S>;
   normalized?: boolean;
 }
 
@@ -83,39 +83,39 @@ const checksumSerOptions: ChecksumEncoderOpts = {
  * use `GoatDB.item()` in order to get a LiveItem instance that's much easier
  * to work with.
  */
-export class Item<S extends Scheme = Scheme>
+export class Item<S extends Schema = Schema>
   implements ReadonlyItem<S>, Encodable
 {
-  readonly schemeManager: SchemeManager;
+  readonly schemeManager: SchemaManager;
   private _scheme!: S;
-  private _data!: SchemeDataType<S>;
+  private _data!: SchemaDataType<S>;
   private _checksum: string | undefined;
   private _normalized = false;
   private _locked = false;
 
   constructor(
     config: ItemConfig<S> | ConstructorDecoderConfig<EncodedItem>,
-    schemeManager?: SchemeManager,
+    schemeManager?: SchemaManager,
   ) {
-    this.schemeManager = schemeManager || SchemeManager.default;
+    this.schemeManager = schemeManager || SchemaManager.default;
     if (isDecoderConfig(config)) {
       this.deserialize(config.decoder);
     } else {
       this._scheme = config.scheme;
-      this._data = config.data as SchemeDataType<S>;
+      this._data = config.data as SchemaDataType<S>;
       this._normalized = config.normalized === true;
     }
     // this.normalize();
     // this.assertValidData();
   }
 
-  private static _kNullDocument: Item<typeof kNullScheme> | undefined;
+  private static _kNullDocument: Item<typeof kNullSchema> | undefined;
   /**
    * @returns An item with the null scheme.
    */
-  static nullItem<S extends Scheme = typeof kNullScheme>(): Item<S> {
+  static nullItem<S extends Schema = typeof kNullSchema>(): Item<S> {
     if (!this._kNullDocument) {
-      this._kNullDocument = new this({ scheme: kNullScheme, data: {} });
+      this._kNullDocument = new this({ scheme: kNullSchema, data: {} });
       this._kNullDocument.lock();
     }
     return this._kNullDocument as unknown as Item<S>;
@@ -179,7 +179,7 @@ export class Item<S extends Scheme = Scheme>
    *
    * @returns The underlying object primitive.
    */
-  dataUnsafe(): SchemeDataType<S> {
+  dataUnsafe(): SchemaDataType<S> {
     return this._data;
   }
 
@@ -203,7 +203,7 @@ export class Item<S extends Scheme = Scheme>
   /**
    * Returns the keys currently present in this item.
    */
-  get keys(): (string & keyof SchemeDataType<S>)[] {
+  get keys(): (string & keyof SchemaDataType<S>)[] {
     return Object.keys(this._data);
   }
 
@@ -215,11 +215,11 @@ export class Item<S extends Scheme = Scheme>
    * @throws    Throws if attempting to access a field not defined by this
    *            item's scheme.
    */
-  get<T extends keyof SchemeDataType<S>>(
+  get<T extends keyof SchemaDataType<S>>(
     key: string & T,
-  ): SchemeDataType<S>[T] {
+  ): SchemaDataType<S>[T] {
     assert(
-      SchemeGetFieldDef(this.scheme, key) !== undefined,
+      SchemaGetFieldDef(this.scheme, key) !== undefined,
       `Unknown field name '${key}' for scheme '${this.scheme.ns}'`,
     );
     return this._data[key];
@@ -233,9 +233,9 @@ export class Item<S extends Scheme = Scheme>
    * @throws    Throws if attempting to access a field not defined by this
    *            item's scheme.
    */
-  has<T extends keyof SchemeDataType<S>>(key: string & T): boolean {
+  has<T extends keyof SchemaDataType<S>>(key: string & T): boolean {
     assert(
-      SchemeGetFieldDef(this.scheme, key) !== undefined,
+      SchemaGetFieldDef(this.scheme, key) !== undefined,
       `Unknown field name '${key}' for scheme '${this.scheme.ns}'`,
     );
     return Object.hasOwn(this._data, key);
@@ -251,13 +251,13 @@ export class Item<S extends Scheme = Scheme>
    * @throws      Throws if attempting to set a field not defined by this item's
    *              scheme.
    */
-  set<T extends keyof SchemeDataType<S>>(
+  set<T extends keyof SchemaDataType<S>>(
     key: string & T,
-    value: SchemeDataType<S>[T] | undefined,
+    value: SchemaDataType<S>[T] | undefined,
   ): void {
     assert(!this._locked);
     assert(
-      SchemeGetFieldDef(this.scheme, key) !== undefined,
+      SchemaGetFieldDef(this.scheme, key) !== undefined,
       `Unknown field name '${key}' for scheme '${this.scheme.ns}'`,
     );
     if (value === undefined) {
@@ -273,7 +273,7 @@ export class Item<S extends Scheme = Scheme>
    * A convenience method for setting several fields and values at once.
    * @param data The values to set.
    */
-  setMulti(data: Partial<SchemeDataType<S>>): void {
+  setMulti(data: Partial<SchemaDataType<S>>): void {
     assert(!this._locked);
     for (const [key, value] of Object.entries(data)) {
       this.set(key, value);
@@ -289,10 +289,10 @@ export class Item<S extends Scheme = Scheme>
    * @throws    Throws if attempting to set a field not defined by this item's
    *            scheme.
    */
-  delete<T extends keyof SchemeDataType<S>>(key: string & T): boolean {
+  delete<T extends keyof SchemaDataType<S>>(key: string & T): boolean {
     assert(!this._locked);
     assert(
-      SchemeGetFieldDef(this.scheme, key) !== undefined,
+      SchemaGetFieldDef(this.scheme, key) !== undefined,
       `Unknown field name '${key}' for scheme '${this.scheme.ns}'`,
     );
     if (Object.hasOwn(this._data, key)) {
@@ -308,7 +308,7 @@ export class Item<S extends Scheme = Scheme>
     if (this === other) {
       return true;
     }
-    if (!SchemeEquals(this.scheme, other.scheme)) {
+    if (!SchemaEquals(this.scheme, other.scheme)) {
       return false;
     }
     this.normalize();
@@ -336,7 +336,7 @@ export class Item<S extends Scheme = Scheme>
     return result;
   }
 
-  cloneData(onlyFields?: (keyof SchemeDataType<S>)[]): SchemeDataType<S> {
+  cloneData(onlyFields?: (keyof SchemaDataType<S>)[]): SchemaDataType<S> {
     return clone(this._scheme, this._data, onlyFields);
   }
 
@@ -374,13 +374,13 @@ export class Item<S extends Scheme = Scheme>
     });
   }
 
-  upgradeScheme(newScheme?: Scheme): void {
+  upgradeScheme(newScheme?: Schema): void {
     assert(!this._locked);
     const res = this.schemeManager.upgrade(this._data, this._scheme, newScheme);
     assert(res !== undefined, 'Upgrade failed');
     // Refresh caches if actually changed the data
     if (res[0] !== this._data) {
-      [this._data, this._scheme] = res as [SchemeDataType<S>, S];
+      [this._data, this._scheme] = res as [SchemaDataType<S>, S];
       this.invalidateCaches();
       this.normalize();
     }
@@ -468,7 +468,7 @@ export class Item<S extends Scheme = Scheme>
     return encoder.getOutput() as ReadonlyJSONObject;
   }
 
-  static fromJS<S extends Scheme>(obj: ReadonlyJSONObject): Item<S> {
+  static fromJS<S extends Schema>(obj: ReadonlyJSONObject): Item<S> {
     const decoder = JSONCyclicalDecoder.get(obj);
     const record = new this({ decoder });
     decoder.finalize();

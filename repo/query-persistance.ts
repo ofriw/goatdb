@@ -3,7 +3,7 @@ import { Query } from './query.ts';
 import { Repository, RepoStorage, MemRepoStorage } from './repo.ts';
 import { SimpleTimer, Timer } from '../base/timer.ts';
 import { kSecondMs } from '../base/date.ts';
-import { Scheme } from '../cfds/base/scheme.ts';
+import { Schema } from '../cfds/base/schema.ts';
 
 const QUERY_CACHE_VERSION = 1;
 
@@ -31,10 +31,10 @@ export interface QueryPersistanceStorage {
 export class QueryPersistence {
   private readonly _queries: Map<
     string,
-    Set<Query<Scheme, Scheme, ReadonlyJSONValue>>
+    Set<Query<Schema, Schema, ReadonlyJSONValue>>
   >;
   private readonly _persistedGeneration: Map<
-    Query<Scheme, Scheme, ReadonlyJSONValue>,
+    Query<Schema, Schema, ReadonlyJSONValue>,
     number
   >;
   private readonly _cachedDataForRepo: Map<string, Map<string, QueryCache>>;
@@ -67,7 +67,7 @@ export class QueryPersistence {
     this._flushTimer.unschedule();
   }
 
-  register(query: Query<Scheme, Scheme, ReadonlyJSONValue>): void {
+  register(query: Query<Schema, Schema, ReadonlyJSONValue>): void {
     let set = this._queries.get(query.repo.id);
     if (!set) {
       set = new Set();
@@ -77,7 +77,7 @@ export class QueryPersistence {
     this.flush(query.repo.id);
   }
 
-  unregister(query: Query<Scheme, Scheme, ReadonlyJSONValue>): void {
+  unregister(query: Query<Schema, Schema, ReadonlyJSONValue>): void {
     const set = this._queries.get(query.repo.id);
     if (set) {
       set.delete(query);
