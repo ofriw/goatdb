@@ -5,6 +5,7 @@ import { ManagedItem } from '../db/managed-item.ts';
 import { MutationPack, mutationPackHasField } from '../db/mutations.ts';
 import { ReadonlyJSONValue } from '../base/interfaces.ts';
 import { Query, QueryConfig } from '../repo/query.ts';
+import { getBaseURL } from '../net/rest-api.ts';
 
 type GoatDBCtxProps = {
   db?: GoatDB;
@@ -22,7 +23,7 @@ const GoatDBContext = React.createContext<GoatDBCtxProps>({});
 export function useDB(): GoatDB {
   const ctx = useContext(GoatDBContext);
   if (!ctx.db) {
-    ctx.db = new GoatDB({ path: '/data/db' });
+    ctx.db = new GoatDB({ path: '/data/db', peers: getBaseURL() });
   }
   return ctx.db;
 }

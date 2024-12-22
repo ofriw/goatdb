@@ -114,7 +114,7 @@ export class Repository<
     }: RepositoryConfig<ST> = {},
   ) {
     super();
-    this.id = Repository.normalizeId(id);
+    this.id = Repository.normalizePath(id);
     this.storage = storage || (new MemRepoStorage() as unknown as ST);
     this.path = `/${this.storage}/${this.id}`;
     this.trustPool = trustPool;
@@ -132,8 +132,8 @@ export class Repository<
     this._cachedLeavesForKey = new Map();
   }
 
-  static id(storage: string, id: string): string {
-    return this.normalizeId(`${storage}/${id}`);
+  static path(storage: string, id: string): string {
+    return this.normalizePath(`${storage}/${id}`);
   }
 
   static parseId(id: string): [storage: string, id: string] {
@@ -145,7 +145,7 @@ export class Repository<
     return comps as [string, string];
   }
 
-  static normalizeId(id: string): string {
+  static normalizePath(id: string): string {
     if (!id.startsWith('/')) {
       id = '/' + id;
     }
@@ -155,7 +155,7 @@ export class Repository<
     return id;
   }
 
-  static readonly sysDirId = this.id('sys', 'dir');
+  static readonly sysDirId = this.path('sys', 'dir');
 
   get orgId(): string {
     return this.trustPool.orgId;
@@ -398,7 +398,7 @@ export class Repository<
       if (!result) {
         if (this.hasRecordForCommit(c)) {
           result = c;
-          scheme = this.recordForCommit(c).scheme;
+          scheme = this.recordForCommit(c).schema;
           includedCommits.push(c);
         }
         continue;
@@ -417,7 +417,7 @@ export class Repository<
       }
       result = newBase;
       includedCommits.push(c);
-      const s = this.recordForCommit(c).scheme;
+      const s = this.recordForCommit(c).schema;
       assert(scheme.ns === null || scheme.ns === s.ns); // Sanity check
       if (s.version > (scheme?.version || 0)) {
         scheme = s;
@@ -883,7 +883,7 @@ export class Repository<
       foundRoot = true;
     } else if (commitsToMerge.length === 1) {
       // Special case: a single chain of commits.
-      scheme = this.recordForCommit(commitsToMerge[0]).scheme || kNullSchema;
+      scheme = this.recordForCommit(commitsToMerge[0]).schema || kNullSchema;
       foundRoot = false;
     } else {
       [commitsToMerge, lca, scheme, foundRoot] =
@@ -898,7 +898,7 @@ export class Repository<
     const base = lca ? this.recordForCommit(lca).clone() : Item.nullItem();
     // Upgrade base to merge scheme
     if (scheme.ns !== null) {
-      base.upgradeScheme(scheme);
+      base.upgradeSchema(scheme);
     }
     // Compute all changes to be applied in this merge
     let changes: DataChanges = {};
@@ -925,7 +925,7 @@ export class Repository<
       // for this merge.
       if (scheme.ns !== null) {
         record = record.clone();
-        record.upgradeScheme(scheme);
+        record.upgradeSchema(scheme);
       }
       changes = concatChanges(
         changes,
@@ -1083,7 +1083,7 @@ export class Repository<
     }
     assert(
       !this.allowedNamespaces ||
-        this.allowedNamespaces.includes(value.scheme.ns!),
+        this.allowedNamespaces.includes(value.schema.ns!),
     );
     const latest = this.valueForKey(key);
     if (latest && latest[0].isEqual(value as unknown as Item)) {
@@ -1160,12 +1160,12 @@ export class Repository<
       : (Item.nullItem() as Item<S>);
     if (
       !headRecord.isNull &&
-      !SchemaEquals(baseRecord.scheme, headRecord.scheme)
+      !SchemaEquals(baseRecord.schema, headRecord.schema)
     ) {
-      baseRecord.upgradeScheme(headRecord.scheme);
+      baseRecord.upgradeSchema(headRecord.schema);
     }
-    if (!record.isNull && !SchemaEquals(baseRecord.scheme, record.scheme)) {
-      baseRecord.upgradeScheme(record.scheme);
+    if (!record.isNull && !SchemaEquals(baseRecord.schema, record.schema)) {
+      baseRecord.upgradeSchema(record.schema);
     }
     const changes = concatChanges(
       baseRecord.diff(headRecord, false),

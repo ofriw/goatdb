@@ -17,7 +17,7 @@ import { coreValueEquals } from '../base/core-types/equals.ts';
 import { assert } from '../base/error.ts';
 import { Schema, SchemaManager } from '../cfds/base/schema.ts';
 import { VersionNumber } from '../base/version-number.ts';
-import { getOvvioConfig } from '../server/config.ts';
+import { getGoatConfig } from '../server/config.ts';
 import { Comparable, coreValueCompare } from '../base/core-types/index.ts';
 import { ReadonlyJSONArray, ReadonlyJSONObject } from '../base/interfaces.ts';
 import {
@@ -146,7 +146,7 @@ export class Commit implements Encodable, Decodable, Equatable, Comparable {
       if (commitContentsIsDocument(this._contents)) {
         this._contents.record.lock();
       }
-      this._buildVersion = config.buildVersion || getOvvioConfig().version;
+      this._buildVersion = config.buildVersion || getGoatConfig().version;
       this._signature = config.signature;
       this._mergeBase = config.mergeBase;
       this._mergeLeader = config.mergeLeader;
@@ -211,7 +211,7 @@ export class Commit implements Encodable, Decodable, Equatable, Comparable {
     if (commitContentsIsDelta(contents)) {
       return contents.edit.scheme;
     }
-    return contents.record.scheme;
+    return contents.record.schema;
   }
 
   get signature(): string | undefined {

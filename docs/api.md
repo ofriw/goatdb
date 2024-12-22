@@ -92,7 +92,7 @@ When building UI components, consider using React hooks that automatically handl
 Sometimes you need to create items without directly accessing them afterward, for example, when bulk loading data. A dedicated method is available for this scenario, optimizing internal operations:
 
 ```javascript
-await db.create('/data/repoId/itemId', schema, itemData);
+await db.load('/data/repoId/itemId', schema, itemData);
 ```
 
 The recommended approach for bulk loading data is to invoke this method multiple times concurrently and wait for all calls to complete.

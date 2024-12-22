@@ -1,6 +1,6 @@
 import { VCurrent, VersionNumber } from '../base/version-number.ts';
 
-export interface OvvioConfig {
+export interface GoatConfig {
   version: VersionNumber;
   debug: boolean;
   orgId?: string;
@@ -10,8 +10,8 @@ export interface OvvioConfig {
   serverData?: unknown;
 }
 
-export function getOvvioConfig(): OvvioConfig {
-  let config = (self as any).OvvioConfig as OvvioConfig | undefined;
+export function getGoatConfig(): GoatConfig {
+  let config = (self as any).OvvioConfig as GoatConfig | undefined;
   if (!config) {
     config = config || {
       version: VCurrent,
@@ -23,9 +23,9 @@ export function getOvvioConfig(): OvvioConfig {
 }
 
 export function getClientData<T>(): T | undefined {
-  return getOvvioConfig().clientData as T;
+  return getGoatConfig().clientData as T;
 }
 
 export function setClientData<T>(data: T | undefined): void {
-  getOvvioConfig().clientData = data;
+  getGoatConfig().clientData = data;
 }

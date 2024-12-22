@@ -89,7 +89,7 @@ export class QueryPersistence {
   }
 
   async get(repoId: string, queryId?: string): Promise<QueryCache | undefined> {
-    repoId = Repository.normalizeId(repoId);
+    repoId = Repository.normalizePath(repoId);
     let map = this._cachedDataForRepo.get(repoId);
     if (!map) {
       map = await this.loadCacheForRepo(repoId);
@@ -116,7 +116,7 @@ export class QueryPersistence {
   private async _loadCacheForRepoImpl(
     repoId: string,
   ): Promise<Map<string, QueryCache>> {
-    repoId = Repository.normalizeId(repoId);
+    repoId = Repository.normalizePath(repoId);
     const json = await this.storage?.load(repoId);
     if (json?.version !== QUERY_CACHE_VERSION) {
       return new Map();
@@ -135,7 +135,7 @@ export class QueryPersistence {
   }
 
   flush(repoId: string): Promise<void> {
-    repoId = Repository.normalizeId(repoId);
+    repoId = Repository.normalizePath(repoId);
     let promise = this._flushPromises.get(repoId);
     if (!promise) {
       promise = this._flushImpl(repoId);
@@ -148,7 +148,7 @@ export class QueryPersistence {
     if (!this.storage) {
       return;
     }
-    repoId = Repository.normalizeId(repoId);
+    repoId = Repository.normalizePath(repoId);
     let changed = false;
     const queries = this._queries.get(repoId) || [];
     for (const q of queries) {

@@ -16,9 +16,10 @@ import { isDecoderConfig } from '../base/core-types/encoding/utils.ts';
 import { CoroutineScheduler, SchedulerPriority } from '../base/coroutine.ts';
 import { ReadonlyJSONObject } from '../base/interfaces.ts';
 import { VersionNumber } from '../base/version-number.ts';
+import { SchemaManager } from '../cfds/base/schema.ts';
 import { NormalizedLogEntry } from '../logging/entry.ts';
 import { Commit } from '../repo/commit.ts';
-import { getOvvioConfig } from '../server/config.ts';
+import { getGoatConfig } from '../server/config.ts';
 
 export const K_DEFAULT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -113,13 +114,18 @@ export interface SyncMessageDecoderConfig extends ConstructorDecoderConfig {
  */
 export class SyncMessage implements Encodable, Decodable {
   readonly orgId: string;
+  readonly schemaManager: SchemaManager;
   private _buildVersion!: VersionNumber;
   private _filter!: BloomFilter;
   private _size!: number;
   private _values!: Commit[];
   private _accessDenied?: string[];
 
-  constructor(config: SyncMessageDecoderConfig | SyncMessageConfig) {
+  constructor(
+    config: SyncMessageDecoderConfig | SyncMessageConfig,
+    schemaManager: SchemaManager,
+  ) {
+    this.schemaManager = schemaManager;
     if (isDecoderConfig(config)) {
       this.orgId = config.orgId;
       this.deserialize(config.decoder);
@@ -131,7 +137,7 @@ export class SyncMessage implements Encodable, Decodable {
       if (config.accessDenied) {
         this._accessDenied = Array.from(config.accessDenied);
       }
-      this._buildVersion = config.buildVersion || getOvvioConfig().version;
+      this._buildVersion = config.buildVersion || getGoatConfig().version;
     }
   }
 
@@ -193,7 +199,13 @@ export class SyncMessage implements Encodable, Decodable {
     const values: Commit[] = [];
     for (const obj of decoder.get<ReadonlyDecodedArray>('c', [])!) {
       try {
-        values.push(Commit.fromJS(this.orgId, obj as ReadonlyJSONObject));
+        values.push(
+          Commit.fromJS(
+            this.orgId,
+            obj as ReadonlyJSONObject,
+            this.schemaManager,
+          ),
+        );
       } catch (e: unknown) {}
     }
     this._values = values;
@@ -201,6 +213,7 @@ export class SyncMessage implements Encodable, Decodable {
 
   static async decodeAsync(
     decoderConfig: SyncMessageDecoderConfig,
+    schemaManager: SchemaManager,
   ): Promise<SyncMessage> {
     const decoder: Decoder<string, DecodedValue> = decoderConfig.decoder;
     const buildVersion = decoder.get<VersionNumber>('ver')!;
@@ -217,19 +230,26 @@ export class SyncMessage implements Encodable, Decodable {
       : await CoroutineScheduler.sharedScheduler().map(
           decoder.get<ReadonlyDecodedArray>('c', [])!,
           (obj) =>
-            Commit.fromJS(decoderConfig.orgId, obj as ReadonlyJSONObject),
+            Commit.fromJS(
+              decoderConfig.orgId,
+              obj as ReadonlyJSONObject,
+              schemaManager,
+            ),
           SchedulerPriority.Normal,
           'SyncMessageDecode',
           true,
         );
-    return new this({
-      filter,
-      size,
-      orgId: decoderConfig.orgId,
-      values,
-      accessDenied,
-      buildVersion,
-    });
+    return new this(
+      {
+        filter,
+        size,
+        orgId: decoderConfig.orgId,
+        values,
+        accessDenied,
+        buildVersion,
+      },
+      schemaManager,
+    );
   }
 
   static build(
@@ -239,6 +259,7 @@ export class SyncMessage implements Encodable, Decodable {
     peerSize: number,
     expectedSyncCycles: number,
     orgId: string,
+    schemaManager: SchemaManager,
     includeMissing = true,
     lowAccuracy = false,
   ): SyncMessage {
@@ -280,12 +301,15 @@ export class SyncMessage implements Encodable, Decodable {
         }
       }
     }
-    return new this({
-      filter: localFilter,
-      size: localSize,
-      orgId,
-      values: missingPeerValues,
-    });
+    return new this(
+      {
+        filter: localFilter,
+        size: localSize,
+        orgId,
+        values: missingPeerValues,
+      },
+      schemaManager,
+    );
   }
 
   static async buildAsync(
@@ -295,6 +319,7 @@ export class SyncMessage implements Encodable, Decodable {
     peerSize: number,
     expectedSyncCycles: number,
     orgId: string,
+    schemaManager: SchemaManager,
     includeMissing = true,
     lowAccuracy = false,
   ): Promise<SyncMessage> {
@@ -336,12 +361,15 @@ export class SyncMessage implements Encodable, Decodable {
         }
       });
     }
-    return new this({
-      filter: localFilter,
-      size: localSize,
-      orgId,
-      values: missingPeerValues,
-    });
+    return new this(
+      {
+        filter: localFilter,
+        size: localSize,
+        orgId,
+        values: missingPeerValues,
+      },
+      schemaManager,
+    );
   }
 }
 

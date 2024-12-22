@@ -280,7 +280,7 @@ async function main(): Promise<void> {
     path: '/Users/ofri/Documents/ovvio/serverdata/',
     orgId: 'baluka',
   });
-  const repo = await db.open(Repository.id('test', 'baluka-union'));
+  const repo = await db.open(Repository.path('test', 'baluka-union'));
   console.log(`Total time: ${(performance.now() - start) / 1000}sec`);
   debugger;
   console.log(Array.from(repo.keys()).length);

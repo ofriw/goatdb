@@ -434,9 +434,9 @@ export function SchemaGetRequiredFields(s: Schema): readonly string[] {
  */
 export function SchemaGetFieldDef<
   S extends Schema,
-  F extends string & (keyof S['fields'] | keyof typeof kBuiltinFields),
+  F extends keyof S['fields'] | keyof typeof kBuiltinFields,
 >(s: S, field: F): FieldDef<S['fields'][F]['type']> | undefined {
-  const def = s.fields[field] || kBuiltinFields[field];
+  const def = s.fields[field as string] || kBuiltinFields[field as string];
   if (!def) {
     return undefined;
   }

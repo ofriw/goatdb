@@ -27,13 +27,15 @@ import { ServerError } from '../../cfds/base/errors.ts';
 import { sleep } from '../../base/time.ts';
 import { kSecondMs } from '../../base/date.ts';
 // import { JSONLogStream } from '../../logging/json-log-stream.ts';
-import { getOvvioConfig } from '../../server/config.ts';
+import { getGoatConfig } from '../../server/config.ts';
 import { organizationIdFromURL } from '../rest-api.ts';
 import { VCurrent } from '../../base/version-number.ts';
 import { tuple4ToString } from '../../base/tuple.ts';
 import { BuildInfo, generateBuildInfo } from '../../server/build-info.ts';
 import { prettyJSON } from '../../base/common.ts';
 import { GoatDB } from '../../db/db.ts';
+import { SyncEndpoint } from './sync.ts';
+import { persistSession } from './auth.ts';
 // import { StatsEndpoint } from './stats.ts';
 // import {
 //   BenchmarkResults,
@@ -41,6 +43,7 @@ import { GoatDB } from '../../db/db.ts';
 //   runInsertBenchmark,
 // } from './benchmark.ts';
 
+const BASE_ORG_ID = '<global>';
 export const ENV_REPLICAS = 'REPLICAS';
 
 interface BaseServerContext {
@@ -68,7 +71,6 @@ export interface ServerContext extends BaseServerContext {
   readonly settings: SettingsService;
   // readonly prometheusLogStream: PrometheusLogStream;
   // readonly sqliteLogStream: SQLiteLogStream;
-  readonly trustPool: TrustPool;
   // readonly email: EmailService;
   readonly logger: Logger;
   staticAssets: StaticAssets | undefined;
@@ -78,7 +80,6 @@ export interface ServerContext extends BaseServerContext {
 export interface ServerServices extends ServerContext {
   readonly organizationId: string;
   readonly db: GoatDB;
-  // readonly sync: SyncService;
 }
 
 /**
@@ -163,7 +164,7 @@ export class Server {
   ) {
     this._endpoints = [];
     this._middlewares = [];
-    getOvvioConfig().serverData = this;
+    getGoatConfig().serverData = this;
     if (args === undefined) {
       args = yargs(Deno.args)
         .option('port', {
@@ -194,7 +195,6 @@ export class Server {
           alias: 'd',
           description:
             'A full path to a local directory which will host all repositories managed by this server',
-          default: '~/ovvio-data',
         })
         .option('sesRegion', {
           description:
@@ -207,7 +207,7 @@ export class Server {
         //   description: 'Display version information about this build',
         // })
         .version(
-          `Ovvio Server Version ${tuple4ToString(
+          `GoatDB Server Version ${tuple4ToString(
             VCurrent,
           )}\nBuild Info:\n${prettyJSON(buildInfo || generateBuildInfo())}`,
         )
@@ -249,7 +249,6 @@ export class Server {
     //   JSON.parse(decoder.decode(decodeBase64Url(envReplicasStr)));
     this._baseContext = {
       settings: settingsService,
-      // trustPool: new TrustPool(settingsService.session, []),
       prometheusLogStream: prometeusLogStream,
       // sqliteLogStream,
       dir,
@@ -273,7 +272,7 @@ export class Server {
     // Stats
     // this.registerEndpoint(new StatsEndpoint());
     // Sync
-    // this.registerEndpoint(new SyncEndpoint());
+    this.registerEndpoint(new SyncEndpoint());
     // CORS Support
     this.registerMiddleware(new CORSMiddleware());
     this.registerEndpoint(new CORSEndpoint());
@@ -286,13 +285,17 @@ export class Server {
   async setup(): Promise<void> {
     const services: ServerServices = {
       ...this._baseContext,
-      organizationId: '<global>',
-      // sync: new SyncService(),
+      organizationId: BASE_ORG_ID,
+      db: new GoatDB({
+        orgId: BASE_ORG_ID,
+        path: path.join(this._baseContext.dir, BASE_ORG_ID),
+      }),
     };
     // Setup Settings service
     await this._baseContext.settings.setup(services);
+    await persistSession(services, services.settings.session);
     await this._baseContext.settings.start();
-    await this._baseContext.email.setup(services);
+    // await this._baseContext.email.setup(services);
     await this._baseContext.settings.start();
     (this._baseContext as any).trustPool = new TrustPool(
       'localhost',
@@ -304,23 +307,18 @@ export class Server {
   async servicesForOrganization(orgId: string): Promise<ServerServices> {
     let services = this._servicesByOrg.get(orgId);
     if (!services) {
-      const baseTrustPool = this._baseContext.trustPool;
+      const dir = path.join(this._baseContext.dir, orgId);
       // Monitoring
       services = {
         ...this._baseContext,
-        dir: path.join(this._baseContext.dir, orgId),
+        dir,
         organizationId: orgId,
-        // sync: new SyncService(),
-        trustPool: new TrustPool(
-          orgId,
-          baseTrustPool.currentSession,
-          baseTrustPool.roots,
-        ),
+        db: new GoatDB({ orgId, path: dir }),
       };
 
       // Setup all services in the correct order of dependencies
-      // services.sync.setup(services);
-      // <<< Add any new service.setup() calls here >>>
+      // Add any new service.setup() calls here
+      // <<< End Services Setup >>>
       this._servicesByOrg.set(orgId, services);
     }
     return services;

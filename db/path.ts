@@ -45,7 +45,7 @@ export function itemPathGetPart<T extends string>(
 }
 
 export function itemPathGetRepoId(path: string): string {
-  return Repository.id(
+  return Repository.path(
     itemPathGetPart(path, ItemPathPart.Type),
     itemPathGetPart(path, ItemPathPart.Repository),
   );

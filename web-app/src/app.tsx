@@ -34,9 +34,9 @@ export function Header() {
 export function App() {
   const styles = useAppStyles();
   const query = useQuery({
-    scheme: kSchemaTask,
+    schema: kSchemaTask,
     source: REPO_PATH,
-    predicate: ({ item }) => item.get('text').startsWith('lorem'),
+    // predicate: ({ item }) => item.get('text').startsWith('lorem'),
   });
   return (
     <div>

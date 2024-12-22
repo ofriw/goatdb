@@ -11,7 +11,7 @@ import { JSONValue, ReadonlyJSONObject } from '../base/interfaces.ts';
 import { randomInt } from '../base/math.ts';
 import { sleep } from '../base/time.ts';
 import { timeout } from '../cfds/base/errors.ts';
-import { getOvvioConfig } from '../server/config.ts';
+import { getGoatConfig } from '../server/config.ts';
 
 export async function createNewSession(
   publicKey: CryptoKey,
@@ -55,12 +55,12 @@ export async function sendLoginEmail(
 }
 
 export function getBaseURL(): string {
-  const serverURL = getOvvioConfig().serverURL;
+  const serverURL = getGoatConfig().serverURL;
   return serverURL || `${location.protocol}//${location.host}`;
 }
 
 export function getOrganizationId(): string {
-  const config = getOvvioConfig();
+  const config = getGoatConfig();
   if (!self.Deno && config.orgId) {
     return config.orgId;
   }
@@ -99,7 +99,7 @@ export async function sendJSONToURL(
     if (typeof sessionOrSignature !== 'string') {
       sessionOrSignature = await generateRequestSignature(sessionOrSignature);
     }
-    headers['x-ovvio-sig'] = sessionOrSignature;
+    headers['x-goat-sig'] = sessionOrSignature;
   }
   if (orgId) {
     headers['x-org-id'] = orgId;

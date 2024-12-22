@@ -4,7 +4,7 @@ import { SimpleTimer } from '../base/timer.ts';
 import { tuple4Get, tuple4Set } from '../base/tuple.ts';
 import { VersionNumber } from '../base/version-number.ts';
 import { createBuildContext } from '../build.ts';
-import { getOvvioConfig } from './config.ts';
+import { getGoatConfig } from './config.ts';
 import { Server } from '../net/server/server.ts';
 import { getRepositoryPath } from '../base/development.ts';
 import { buildAssets } from './generate-static-assets.ts';
@@ -83,13 +83,13 @@ async function main(): Promise<void> {
   const watcher = Deno.watchFs(await getRepositoryPath());
   const orgId = 'localhost';
   (await server.servicesForOrganization(orgId)).staticAssets =
-    await buildAssets(ctx, getOvvioConfig().version, serverURL, orgId);
+    await buildAssets(ctx, getGoatConfig().version, serverURL, orgId);
   await server.start();
   openBrowser();
   const rebuildTimer = new SimpleTimer(300, false, async () => {
     console.log('Changes detected. Rebuilding static assets...');
     try {
-      const config = getOvvioConfig();
+      const config = getGoatConfig();
       const version =
         serverURL === undefined
           ? incrementBuildNumber(config.version)

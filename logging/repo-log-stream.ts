@@ -24,7 +24,7 @@ export class RepoLogStream implements LogStream {
     min.setValueForKey(
       e.logId,
       new Item({
-        scheme: Scheme.event(),
+        schema: Scheme.event(),
         data: {
           json: JSON.stringify(e),
         },

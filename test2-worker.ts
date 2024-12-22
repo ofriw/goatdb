@@ -54,7 +54,7 @@ onmessage = (event: MessageEvent<Payload[]>) => {
       const scheme = SchemaManager.default.decode(e.schemeId);
       if (scheme) {
         const doc = new Item({
-          scheme,
+          schema,
           data: e.data,
         });
         assert(doc.checksum === e.checksum);

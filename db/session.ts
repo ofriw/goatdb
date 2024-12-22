@@ -410,7 +410,7 @@ export function encodedSessionToRecord(
   // cautious, we delete the field here as well.
   delete (data as any).privateKey;
   return new Item<SchemaSessionType>({
-    scheme: kSchemaSession,
+    schema: kSchemaSession,
     data,
   });
 }
@@ -472,8 +472,12 @@ export function sessionIdFromSignature(sig: string): string {
 }
 
 /**
- * The trust pool manages a set of trusted sessions that we can securely
- * respect as signers of commits.
+ * Each commit in the graph is signed with the private key of the session that
+ * generated it. The trust pool manages all known sessions and their public keys
+ * which are later used to verify that the commits in the graph make only
+ * modifications that are valid. Each commit's signature is checked against its
+ * session's public key, and then the modifications themselves are checked to
+ * ensure the creator only made changes within their scope of permissions.
  */
 export class TrustPool {
   readonly roots: Session[];

@@ -16,7 +16,7 @@ import {
   kEntryPointsNames,
   staticAssetsToJS,
 } from '../net/server/static-assets.ts';
-import { getOvvioConfig } from './config.ts';
+import { getGoatConfig } from './config.ts';
 
 function generateConfigSnippet(
   version: VersionNumber,
@@ -24,7 +24,7 @@ function generateConfigSnippet(
   orgId?: string,
 ): string {
   const config = {
-    ...getOvvioConfig(),
+    ...getGoatConfig(),
     debug: true,
     version,
     orgId,

@@ -45,7 +45,7 @@ import { SchemaGetFieldDef } from './schema.ts';
 
 export interface ReadonlyItem<S extends Schema> {
   readonly isNull: boolean;
-  readonly scheme: S;
+  readonly schema: S;
   readonly isValid: boolean;
   readonly checksum: string;
   get<K extends keyof SchemaDataType<S>>(key: K): SchemaDataType<S>[K];
@@ -54,8 +54,8 @@ export interface ReadonlyItem<S extends Schema> {
 }
 
 export interface ItemConfig<S extends Schema> {
-  scheme: S;
-  data: Pick<SchemaDataType<S>, SchemaRequiredFields<S>> | SchemaDataType<S>;
+  schema: S;
+  data: Partial<SchemaDataType<S>>;
   normalized?: boolean;
 }
 
@@ -76,7 +76,7 @@ const checksumSerOptions: ChecksumEncoderOpts = {
 /**
  * An Item instance represents a snapshot of a data item including all of its
  * fields. An item is a map like object that tracks both the data and its
- * scheme. Items are the contents of specific versions (commits) in the version
+ * schema. Items are the contents of specific versions (commits) in the version
  * graph (history).
  *
  * Typically you never need to create instances of this class directly. Instead,
@@ -86,8 +86,8 @@ const checksumSerOptions: ChecksumEncoderOpts = {
 export class Item<S extends Schema = Schema>
   implements ReadonlyItem<S>, Encodable
 {
-  readonly schemeManager: SchemaManager;
-  private _scheme!: S;
+  readonly schemaManager: SchemaManager;
+  private _schema!: S;
   private _data!: SchemaDataType<S>;
   private _checksum: string | undefined;
   private _normalized = false;
@@ -95,13 +95,13 @@ export class Item<S extends Schema = Schema>
 
   constructor(
     config: ItemConfig<S> | ConstructorDecoderConfig<EncodedItem>,
-    schemeManager?: SchemaManager,
+    schemaManager?: SchemaManager,
   ) {
-    this.schemeManager = schemeManager || SchemaManager.default;
+    this.schemaManager = schemaManager || SchemaManager.default;
     if (isDecoderConfig(config)) {
       this.deserialize(config.decoder);
     } else {
-      this._scheme = config.scheme;
+      this._schema = config.schema;
       this._data = config.data as SchemaDataType<S>;
       this._normalized = config.normalized === true;
     }
@@ -111,29 +111,29 @@ export class Item<S extends Schema = Schema>
 
   private static _kNullDocument: Item<typeof kNullSchema> | undefined;
   /**
-   * @returns An item with the null scheme.
+   * @returns An item with the null schema.
    */
   static nullItem<S extends Schema = typeof kNullSchema>(): Item<S> {
     if (!this._kNullDocument) {
-      this._kNullDocument = new this({ scheme: kNullSchema, data: {} });
+      this._kNullDocument = new this({ schema: kNullSchema, data: {} });
       this._kNullDocument.lock();
     }
     return this._kNullDocument as unknown as Item<S>;
   }
 
   /**
-   * Returns whether this item has a null scheme or not. The null scheme is
+   * Returns whether this item has a null schema or not. The null schema is
    * empty and has no fields and no values.
    */
   get isNull(): boolean {
-    return this.scheme.ns === 'null';
+    return this.schema.ns === 'null';
   }
 
   /**
-   * The scheme of this item.
+   * The schema of this item.
    */
-  get scheme(): S {
-    return this._scheme;
+  get schema(): S {
+    return this._schema;
   }
 
   /**
@@ -142,7 +142,7 @@ export class Item<S extends Schema = Schema>
    * across the network.
    */
   get isValid(): boolean {
-    return isValidData(this.scheme, this._data)[0] as boolean;
+    return isValidData(this.schema, this._data)[0] as boolean;
   }
 
   /**
@@ -152,7 +152,7 @@ export class Item<S extends Schema = Schema>
    *
    * NOTE: It's perfectly OK to mark a deleted item as not deleted. Yay for
    * distributed version control. The delete marker goes through conflict
-   * resolution the same as any other scheme field.
+   * resolution the same as any other schema field.
    */
   get isDeleted(): boolean {
     return this.get('isDeleted') === true;
@@ -194,7 +194,7 @@ export class Item<S extends Schema = Schema>
     this.normalize();
     if (this._checksum === undefined) {
       const csEncoder = new Murmur3Checksum();
-      serialize(csEncoder, this._scheme, this._data, checksumSerOptions);
+      serialize(csEncoder, this._schema, this._data, checksumSerOptions);
       this._checksum = csEncoder.getOutput();
     }
     return this._checksum;
@@ -203,8 +203,8 @@ export class Item<S extends Schema = Schema>
   /**
    * Returns the keys currently present in this item.
    */
-  get keys(): (string & keyof SchemaDataType<S>)[] {
-    return Object.keys(this._data);
+  get keys(): (keyof SchemaDataType<S>)[] {
+    return Object.keys(this._data) as (keyof SchemaDataType<S>)[];
   }
 
   /**
@@ -213,16 +213,16 @@ export class Item<S extends Schema = Schema>
    * @param key The field's name.
    * @returns   The field's value or undefined.
    * @throws    Throws if attempting to access a field not defined by this
-   *            item's scheme.
+   *            item's schema.
    */
   get<T extends keyof SchemaDataType<S>>(
     key: string & T,
   ): SchemaDataType<S>[T] {
     assert(
-      SchemaGetFieldDef(this.scheme, key) !== undefined,
-      `Unknown field name '${key}' for scheme '${this.scheme.ns}'`,
+      SchemaGetFieldDef(this.schema, key) !== undefined,
+      `Unknown field name '${key}' for schema '${this.schema.ns}'`,
     );
-    return this._data[key];
+    return this._data[key] as SchemaDataType<S>[T];
   }
 
   /**
@@ -231,12 +231,12 @@ export class Item<S extends Schema = Schema>
    * @param key The field's name.
    * @returns   Whether the field is currently present on this item or not.
    * @throws    Throws if attempting to access a field not defined by this
-   *            item's scheme.
+   *            item's schema.
    */
   has<T extends keyof SchemaDataType<S>>(key: string & T): boolean {
     assert(
-      SchemaGetFieldDef(this.scheme, key) !== undefined,
-      `Unknown field name '${key}' for scheme '${this.scheme.ns}'`,
+      SchemaGetFieldDef(this.schema, key) !== undefined,
+      `Unknown field name '${key}' for schema '${this.schema.ns}'`,
     );
     return Object.hasOwn(this._data, key);
   }
@@ -246,19 +246,19 @@ export class Item<S extends Schema = Schema>
    *
    * @param key   The field's name.
    * @param value The value to set. Must match the value defined in this item's
-   *              scheme. If undefined is passed, this is the equivalent of
+   *              schema. If undefined is passed, this is the equivalent of
    *              calling `Item.delete(key)`.
    * @throws      Throws if attempting to set a field not defined by this item's
-   *              scheme.
+   *              schema.
    */
   set<T extends keyof SchemaDataType<S>>(
-    key: string & T,
+    key: T,
     value: SchemaDataType<S>[T] | undefined,
   ): void {
     assert(!this._locked);
     assert(
-      SchemaGetFieldDef(this.scheme, key) !== undefined,
-      `Unknown field name '${key}' for scheme '${this.scheme.ns}'`,
+      SchemaGetFieldDef(this.schema, key) !== undefined,
+      `Unknown field name '${key as string}' for schema '${this.schema.ns}'`,
     );
     if (value === undefined) {
       this.delete(key);
@@ -287,13 +287,13 @@ export class Item<S extends Schema = Schema>
    * @returns   True if the field had been deleted, false if the field didn't
    *            exist and the item wasn't modified.
    * @throws    Throws if attempting to set a field not defined by this item's
-   *            scheme.
+   *            schema.
    */
-  delete<T extends keyof SchemaDataType<S>>(key: string & T): boolean {
+  delete<T extends keyof SchemaDataType<S>>(key: T): boolean {
     assert(!this._locked);
     assert(
-      SchemaGetFieldDef(this.scheme, key) !== undefined,
-      `Unknown field name '${key}' for scheme '${this.scheme.ns}'`,
+      SchemaGetFieldDef(this.schema, key) !== undefined,
+      `Unknown field name '${key as string}' for schema '${this.schema.ns}'`,
     );
     if (Object.hasOwn(this._data, key)) {
       delete this._data[key];
@@ -308,7 +308,7 @@ export class Item<S extends Schema = Schema>
     if (this === other) {
       return true;
     }
-    if (!SchemaEquals(this.scheme, other.scheme)) {
+    if (!SchemaEquals(this.schema, other.schema)) {
       return false;
     }
     this.normalize();
@@ -320,16 +320,16 @@ export class Item<S extends Schema = Schema>
     ) {
       return false;
     }
-    return dataEqual(this.scheme, this._data, other._data, {
+    return dataEqual(this.schema, this._data, other._data, {
       local: false,
     });
   }
 
   clone(): Item<S> {
-    const scheme = this._scheme;
+    const schema = this._schema;
     const result = new Item({
-      scheme,
-      data: clone(scheme, this._data),
+      schema,
+      data: clone(schema, this._data),
       normalized: this._normalized,
     });
     result._checksum = this._checksum;
@@ -337,12 +337,12 @@ export class Item<S extends Schema = Schema>
   }
 
   cloneData(onlyFields?: (keyof SchemaDataType<S>)[]): SchemaDataType<S> {
-    return clone(this._scheme, this._data, onlyFields);
+    return clone(this._schema, this._data, onlyFields);
   }
 
   copyFrom(doc: ReadonlyItem<S> | Item<S>): void {
     assert(!this._locked);
-    this._scheme = doc.scheme;
+    this._schema = doc.schema;
     this._data = doc.cloneData();
     this.invalidateCaches();
   }
@@ -352,7 +352,7 @@ export class Item<S extends Schema = Schema>
     this.normalize();
     other.normalize();
     other.assertValidData();
-    return objectDiff(other.scheme, this._data, other._data, {
+    return objectDiff(other.schema, this._data, other._data, {
       local: false,
       byCharacter,
     });
@@ -360,8 +360,8 @@ export class Item<S extends Schema = Schema>
 
   patch(changes: DataChanges): void {
     assert(!this._locked);
-    const scheme = this.scheme;
-    this._data = objectPatch(scheme, this._data, changes);
+    const schema = this.schema;
+    this._data = objectPatch(schema, this._data, changes);
     this.invalidateCaches();
     this.normalize();
   }
@@ -369,47 +369,47 @@ export class Item<S extends Schema = Schema>
   diffKeys(other: Item<S>, local: boolean): string[] {
     this.normalize();
     other.normalize();
-    return diffKeys(other.scheme, this._data, other._data, {
+    return diffKeys(other.schema, this._data, other._data, {
       local,
     });
   }
 
-  upgradeScheme(newScheme?: Schema): void {
+  upgradeSchema(newSchema?: Schema): void {
     assert(!this._locked);
-    const res = this.schemeManager.upgrade(this._data, this._scheme, newScheme);
+    const res = this.schemaManager.upgrade(this._data, this._schema, newSchema);
     assert(res !== undefined, 'Upgrade failed');
     // Refresh caches if actually changed the data
     if (res[0] !== this._data) {
-      [this._data, this._scheme] = res as [SchemaDataType<S>, S];
+      [this._data, this._schema] = res as [SchemaDataType<S>, S];
       this.invalidateCaches();
       this.normalize();
     }
   }
 
-  upgradeSchemeToLatest(): boolean {
+  upgradeSchemaToLatest(): boolean {
     assert(!this._locked);
-    if (this.scheme.ns === null) {
+    if (this.schema.ns === null) {
       return false;
     }
-    const latestScheme = this.schemeManager.get(this.scheme.ns);
+    const latestSchema = this.schemaManager.get(this.schema.ns);
     if (
-      latestScheme !== undefined &&
-      latestScheme.version > this.scheme.version
+      latestSchema !== undefined &&
+      latestSchema.version > this.schema.version
     ) {
-      this.upgradeScheme();
+      this.upgradeSchema();
       return true;
     }
     return false;
   }
 
-  needsSchemeUpgrade(): boolean {
-    if (this.scheme.ns === null) {
+  needsSchemaUpgrade(): boolean {
+    if (this.schema.ns === null) {
       return false;
     }
-    const latestScheme = this.schemeManager.get(this.scheme.ns);
+    const latestSchema = this.schemaManager.get(this.schema.ns);
     if (
-      latestScheme !== undefined &&
-      latestScheme.version > this.scheme.version
+      latestSchema !== undefined &&
+      latestSchema.version > this.schema.version
     ) {
       return true;
     }
@@ -421,7 +421,7 @@ export class Item<S extends Schema = Schema>
       return;
     }
     this.invalidateCaches();
-    normalizeObject(this.scheme, this._data);
+    normalizeObject(this.schema, this._data);
     this._normalized = true;
   }
 
@@ -430,9 +430,9 @@ export class Item<S extends Schema = Schema>
     options = { local: false },
   ): void {
     this.normalize();
-    encoder.set('s', this.schemeManager.encode(this.scheme));
+    encoder.set('s', this.schemaManager.encode(this.schema));
     const dataEncoder = encoder.newEncoder();
-    serialize(dataEncoder, this.scheme, this._data, {
+    serialize(dataEncoder, this.schema, this._data, {
       local: options.local,
     });
     encoder.set('d', dataEncoder.getOutput());
@@ -444,11 +444,11 @@ export class Item<S extends Schema = Schema>
 
   deserialize(decoder: Decoder): void {
     assert(!this._locked);
-    const scheme = this.schemeManager.decode(decoder.get<string>('s')!);
-    assert(scheme !== undefined, 'Unknown scheme');
-    this._scheme = scheme as S;
+    const schema = this.schemaManager.decode(decoder.get<string>('s')!);
+    assert(schema !== undefined, 'Unknown schema');
+    this._schema = schema as S;
     const dataDecoder = decoder.getDecoder('d');
-    this._data = deserialize(dataDecoder, this.scheme);
+    this._data = deserialize(dataDecoder, this.schema);
     if (dataDecoder instanceof JSONCyclicalDecoder) {
       dataDecoder.finalize();
     }
@@ -476,7 +476,7 @@ export class Item<S extends Schema = Schema>
   }
 
   assertValidData(): void {
-    const [valid, msg] = isValidData(this.scheme, this._data);
+    const [valid, msg] = isValidData(this.schema, this._data);
     assert(valid as boolean, msg as string);
   }
 

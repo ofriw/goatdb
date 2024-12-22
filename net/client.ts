@@ -13,6 +13,8 @@ import { Repository } from '../repo/repo.ts';
 import { randomInt } from '../base/math.ts';
 import { Emitter } from '../base/emitter.ts';
 import { Commit } from '../repo/commit.ts';
+import { SchemaManager } from '../cfds/base/schema.ts';
+import { assert } from '../base/error.ts';
 
 const COMMIT_SUBMIT_RETRY = 10;
 
@@ -21,11 +23,13 @@ export type ClientStatus = 'idle' | 'sync' | 'offline';
 export const EVENT_STATUS_CHANGED = 'status_changed';
 
 /**
- * A base class for sync channel clients. This class takes care of everything
- * but interacting with the values themselves. It takes care of adaptive timing,
- * network errors, and other book keeping.
+ * A client implementation for synchronizing a single repository. Multiple
+ * clients are tied to a shared SyncScheduler which combines them to bulk sync
+ * messages when syncing using the REST API.
  *
- * Storage and encoding of values are left for concrete subclasses.
+ * The REST client is polling based with adaptive timing. Future versions will
+ * incorporate a Shoulder Tap using Server-Sent Events so delay is further
+ * reduced and network is further optimized.
  */
 export class RepoClient extends Emitter<typeof EVENT_STATUS_CHANGED> {
   private readonly _timer: EaseInOutSineTimer;
@@ -48,6 +52,7 @@ export class RepoClient extends Emitter<typeof EVENT_STATUS_CHANGED> {
     readonly syncConfig: SyncConfig,
     readonly scheduler: SyncScheduler,
     readonly orgId: string,
+    readonly schemaManager = SchemaManager.default,
   ) {
     super();
     this._timer = new EaseInExpoTimer(
@@ -148,6 +153,7 @@ export class RepoClient extends Emitter<typeof EVENT_STATUS_CHANGED> {
       this.previousServerSize,
       this.syncCycles,
       this.orgId,
+      this.schemaManager,
       includeMissing,
       lowAccuracy,
     );
@@ -218,6 +224,7 @@ export class RepoClient extends Emitter<typeof EVENT_STATUS_CHANGED> {
   }
 
   private async _sendSyncMessageImpl(): Promise<boolean> {
+    assert(!this._requestInProgress); // Sanity check
     if (this.closed) {
       return false;
     }

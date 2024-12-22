@@ -72,7 +72,7 @@ async function createNewNote(db: GoatDB): Promise<void> {
   for (let i = 0; i < numWords; ++i) {
     text += kWords[randomInt(0, kWords.length)] + ' ';
   }
-  await db.create(repoPath + uniqueId(), kSchemeNote, {
+  await db.load(repoPath + uniqueId(), kSchemeNote, {
     text,
   });
 }
@@ -227,7 +227,7 @@ export async function testsMain(): Promise<void> {
   for (let i = 0; i < queryIter; ++i) {
     const query = db.query({
       source: repoPath,
-      scheme: kSchemeNote,
+      schema: kSchemeNote,
       predicate: ({ item, ctx }) => item.get('text').startsWith(ctx.word),
       sortDescriptor: ({ left, right }) =>
         coreValueCompare(left.get('text'), right.get('text')),

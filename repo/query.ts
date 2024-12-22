@@ -48,9 +48,10 @@ export type QueryConfig<
   source: QuerySource<IS, OS>;
   predicate?: Predicate<IS, CTX>;
   sortDescriptor?: SortDescriptor<OS, CTX>;
-  scheme?: IS;
+  schema?: IS;
   id?: string;
   ctx?: CTX;
+  limit?: number;
 };
 
 export type QueryEvent = EventDocumentChanged | 'LoadingFinished' | 'Closed';
@@ -64,6 +65,7 @@ export class Query<
   readonly db: GoatDB;
   readonly context: CTX;
   readonly scheme?: IS;
+  readonly limit: number = 0;
   private readonly source: QuerySource<IS, OS>;
   private _predicateInfo?: PredicateInfo<IS, CTX>;
   private readonly predicate: Predicate<IS, CTX>;
@@ -111,17 +113,19 @@ export class Query<
     predicate,
     sortDescriptor,
     ctx,
-    scheme,
+    schema,
+    limit,
   }: QueryConfig<IS, OS, CTX>) {
     super();
     this.db = db;
     if (!predicate) {
       predicate = () => true;
     }
-    this.id = id || generateQueryId(predicate, sortDescriptor, ctx, scheme?.ns);
+    this.id = id || generateQueryId(predicate, sortDescriptor, ctx, schema?.ns);
     this.context = ctx as CTX;
     this.source = source;
-    this.scheme = scheme;
+    this.scheme = schema;
+    this.limit = limit || 0;
     this.predicate = predicate;
     this.sortDescriptor = sortDescriptor;
     this._headIdForKey = new Map();
@@ -138,7 +142,7 @@ export class Query<
 
   get repo(): Repository {
     if (typeof this.source === 'string') {
-      return this.db.getRepository(this.source)!;
+      return this.db.repository(this.source)!;
     }
     return this.source instanceof Repository ? this.source : this.source.repo;
   }
@@ -292,15 +296,11 @@ export class Query<
   }
 
   private addKeyToResults(key: string, currentDoc: Item<IS>): void {
-    // Remove any previous entry, to account for order changes
-    // if (this._bloomFilter.has(key)) {
-    //   const idx = this._includedKeys.indexOf(key);
-    //   if (idx >= 0) {
-    //     this._includedKeys.splice(idx, 1);
-    //   }
-    // }
     // Insert to the results set
-    if (this.has(key)) {
+    if (
+      this.has(key) ||
+      (this.limit > 0 && this._includedKeys.length >= this.limit)
+    ) {
       return;
     }
     this._includedKeys.push(key);
@@ -336,7 +336,7 @@ export class Query<
           this._predicateInfo.ctx = this.context;
         }
         if (
-          (!this.scheme || this.scheme.ns === currentDoc.scheme.ns) &&
+          (!this.scheme || this.scheme.ns === currentDoc.schema.ns) &&
           this.predicate(this._predicateInfo!)
         ) {
           this.addKeyToResults(key, currentDoc);
@@ -363,7 +363,6 @@ export class Query<
     const repo = this.repo;
     const key = commit.key;
     const prevHeadId = this._headIdForKey.get(key);
-    debugger;
     const currentHead = repo.headForKey(key);
     if (currentHead && prevHeadId !== currentHead?.id) {
       const prevDoc = prevHeadId

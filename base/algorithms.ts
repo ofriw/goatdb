@@ -16,9 +16,9 @@
  *                   exist in the array.
  */
 export function bsearch<T>(
-  arr: T[],
+  arr: readonly T[],
   value: T,
-  comparator: (x: T, y: T) => number = (x, y) => (x > y ? 1 : x < y ? -1 : 0)
+  comparator: (x: T, y: T) => number = (x, y) => (x > y ? 1 : x < y ? -1 : 0),
 ): number {
   if (!arr || arr.length <= 0) {
     return 0;
@@ -45,9 +45,9 @@ export function bsearch<T>(
 
 export function bsearch_idx(
   length: number,
-  comparator: (idx: number) => number = idx => {
+  comparator: (idx: number) => number = (idx) => {
     throw new Error('Bad comparator');
-  }
+  },
 ): number {
   if (!length) {
     return -1;

@@ -105,7 +105,9 @@ export async function runInsertBenchmark(
     promises.push(repo.setValueForKey(uniqueId(), kSampleRecord, undefined));
   }
   await Promise.allSettled(promises);
-  await services.sync.waitForBackup(Repository.id('data', results.benchmarkId));
+  await services.sync.waitForBackup(
+    Repository.path('data', results.benchmarkId),
+  );
   const testTime = performance.now() - startTime;
   results.testSize = K_TEST_SIZE;
   results.totalInsertTime = testTime;
