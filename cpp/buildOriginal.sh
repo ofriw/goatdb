@@ -19,28 +19,24 @@ then
     exit 1
 fi
 
+# Base compilation flags
 CFLAGS=(-std=c++20 -s WASM=1
     -I.
     -I../external
     -I/opt/homebrew/include
-    -s EXPORTED_FUNCTIONS='["_malloc","_free","_createBloomFilter","_createBloomFilterFromData","_addToFilter","_checkInFilter","_deleteBloomFilter","_getBloomFilterPointer","_getBloomFilterSize","_getBloomFilterNumberOfHashes"]'
-    -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'UTF8ToString', 'lengthBytesUTF8', 'stringToUTF8']"
+    -s EXPORTED_FUNCTIONS='["_malloc", "_free", "_createBloomFilter", "_createBloomFilterFromData", "_addToFilter", "_checkInFilter", "_deleteBloomFilter", "_getBloomFilterPointer", "_getBloomFilterSize", "_getBloomFilterNumberOfHashes"]'
+    -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap", "UTF8ToString"]'
     -s DISABLE_EXCEPTION_CATCHING=0
     -s ALLOW_MEMORY_GROWTH=1
     -s INITIAL_MEMORY=256MB
     -s MAXIMUM_MEMORY=4GB
     -s NO_EXIT_RUNTIME=1
-    -s ENVIRONMENT='web,worker'
-    -s EXPORT_ES6=0  
-    -s MODULARIZE=1
-    -s EXPORT_NAME='createModule'
+    -s ENVIRONMENT='web'
     --no-entry
     -s ERROR_ON_UNDEFINED_SYMBOLS=0
-    -s ASSERTIONS=0
+    -s ASSERTIONS=1
     -gsource-map 
-    -s STACK_OVERFLOW_CHECK=2
-    -s SINGLE_FILE=0
-
+    -s STACK_OVERFLOW_CHECK=2  
 )
 
 # Add optimization flag
@@ -52,9 +48,9 @@ if [ ! -z "$SANITIZER" ]; then
 fi
 
 # Compile C++ to WebAssembly
-emcc "${CFLAGS[@]}" -o bloom_filter.js BloomFilter.cpp ../external/MurmurHash3.cpp
+emcc "${CFLAGS[@]}" -o bloom_filterOriginal.js BloomFilterOriginal.cpp ../external/MurmurHash3.cpp
 
-echo "Compilation complete. Output files: bloom_filter.js and bloom_filter.wasm"
+echo "Compilation complete. Output files: bloom_filterOrg.js and bloom_filterOrg.wasm"
 echo "Optimization level: $OPTIMIZATION"
 if [ ! -z "$SANITIZER" ]; then
     echo "Sanitizer: $SANITIZER"

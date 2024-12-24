@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "__node_handle": "cpp",
+        "optional": "cpp",
+        "__bit_reference": "cpp",
+        "bitset": "cpp",
+        "deque": "cpp",
+        "__memory": "cpp",
+        "limits": "cpp",
+        "locale": "cpp",
+        "ratio": "cpp",
+        "tuple": "cpp",
+        "vector": "cpp"
+    }
+}

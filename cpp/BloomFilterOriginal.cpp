@@ -1,5 +1,6 @@
+
 #ifdef __EMSCRIPTEN__
-#include <emscripten/emscripten.h>
+#include <emscripten.h>
 #endif
 #include <algorithm>
 #include <cmath>
@@ -12,7 +13,7 @@
 #include <string>
 #include <vector>
 
-#include "BloomFilter.hpp"
+#include "BloomFilterOriginal.hpp"
 #include "MurmurHash3.h"
 
 static std::mt19937 _gGen{static_cast<std::mt19937::result_type>(
@@ -89,6 +90,13 @@ BloomFilter::BloomFilter(const char *buff)
         const_cast<BloomFilterSerialized *>(reinterpret_cast<const BloomFilterSerialized *>(buff));
 }
 
+auto BloomFilter::hashString(const std::string &value, uint32_t seed) -> uint32_t
+{
+    std::array<uint64_t, 2> hash = {0, 0};
+    MurmurHash3_x64_128(value.data(), static_cast<int>(value.length()), seed, hash.data());
+    return static_cast<uint32_t>(hash[0]);
+}
+
 void BloomFilter::setBit(size_t index)
 {
     if (index < internal->size)
@@ -106,14 +114,7 @@ auto BloomFilter::getBit(size_t index) const -> bool
     return false;
 }
 
-auto BloomFilter::hashString(std::string_view value, uint32_t seed) -> uint32_t
-{
-    std::array<uint64_t, 2> hash = {0, 0};
-    MurmurHash3_x64_128(value.data(), static_cast<int>(value.length()), seed, hash.data());
-    return static_cast<uint32_t>(hash[0]);
-}
-
-void BloomFilter::add(std::string_view value)
+void BloomFilter::add(const std::string &value)
 {
     for (size_t i = 0; i < internal->num_hashes; ++i)
     {
@@ -122,7 +123,7 @@ void BloomFilter::add(std::string_view value)
     }
 }
 
-auto BloomFilter::has(std::string_view value) const -> bool
+auto BloomFilter::has(const std::string &value) const -> bool
 {
     for (size_t i = 0; i < internal->num_hashes; ++i)
     {
@@ -183,6 +184,7 @@ std::unique_ptr<BloomFilter> createBloomFilterUnique(size_t size, double fpr, si
 
 extern "C"
 {
+
     EMSCRIPTEN_KEEPALIVE
     BloomFilter *createBloomFilter(size_t size, double fpr, size_t maxHashes)
     {
@@ -210,22 +212,20 @@ extern "C"
     }
 
     EMSCRIPTEN_KEEPALIVE
-    void addToFilter(BloomFilter *filter, const uint8_t *data, size_t length)
+    void addToFilter(BloomFilter *filter, const char *value)
     {
-        if (filter != nullptr && data != nullptr)
+        if ((filter != nullptr) && (value != nullptr))
         {
-            std::string_view value(reinterpret_cast<const char *>(data), length);
-            filter->add(value);
+            filter->add(std::string(value));
         }
     }
 
     EMSCRIPTEN_KEEPALIVE
-    int checkInFilter(BloomFilter *filter, const uint8_t *data, size_t length)
+    auto checkInFilter(BloomFilter *filter, const char *value) -> int
     {
-        if (filter != nullptr && data != nullptr)
+        if ((filter != nullptr) && (value != nullptr))
         {
-            std::string_view value(reinterpret_cast<const char *>(data), length);
-            return filter->has(value) ? 1 : 0;
+            return filter->has(std::string(value)) ? 1 : 0;
         }
         return 0;
     }
@@ -235,6 +235,7 @@ extern "C"
     {
         if (filter != nullptr)
         {
+            emscripten_log(EM_LOG_INFO, "Deleting BloomFilter object.");
             delete filter;
         }
     }
@@ -242,18 +243,18 @@ extern "C"
     EMSCRIPTEN_KEEPALIVE
     const char *getBloomFilterPointer(BloomFilter *filter)
     {
-        return filter ? filter->getInternalPointer() : nullptr;
+        return filter->getInternalPointer();
     }
 
     EMSCRIPTEN_KEEPALIVE
     size_t getBloomFilterSize(BloomFilter *filter)
     {
-        return filter ? filter->getSize() : 0;
+        return filter->getSize();
     }
 
     EMSCRIPTEN_KEEPALIVE
     size_t getBloomFilterNumberOfHashes(BloomFilter *filter)
     {
-        return filter ? filter->getNumberOfHashes() : 0;
+        return filter->getNumberOfHashes();
     }
 }
