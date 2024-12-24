@@ -104,8 +104,9 @@ export interface BloomFilterDecoderConfig
 export class BloomFilter implements Encodable, Decodable {
   private _filter!: BitField;
   private _hashes: MurmurHash3[];
-
   constructor(options: BloomFilterOptions | BloomFilterDecoderConfig) {
+    console.log('JavaScript!');
+
     if (isDecoderConfig(options)) {
       // this._filter = new BitField(1);
       this._hashes = [];
@@ -117,7 +118,7 @@ export class BloomFilter implements Encodable, Decodable {
       if (m === undefined) {
         assert(fpr !== undefined);
         m = Math.ceil(
-          (size * Math.log(fpr!)) / Math.log(1 / Math.pow(2, Math.log(2))),
+          (size * Math.log(fpr!)) / Math.log(1 / Math.pow(2, Math.log(2)))
         );
       }
       if (k === undefined) {
@@ -200,18 +201,18 @@ export class BloomFilter implements Encodable, Decodable {
 
   serialize(
     encoder: Encoder<string, CoreValue, unknown, unknown>,
-    _options?: unknown,
+    _options?: unknown
   ): void {
     encoder.set('d', encodeBase64(this._filter.buffer));
     encoder.set(
       's',
-      this._hashes.map((h) => h.seed),
+      this._hashes.map((h) => h.seed)
     );
   }
 
   deserialize(
     decoder: Decoder<string, DecodedValue>,
-    _options?: unknown,
+    _options?: unknown
   ): void {
     if (!this._filter) {
       this._filter = new BitField(decodeBase64(decoder.get('d')!, true));

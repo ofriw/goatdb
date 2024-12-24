@@ -5,15 +5,16 @@ import { Emitter } from '../base/emitter.ts';
 import { NextEventLoopCycleTimer } from '../base/timer.ts';
 import { md51 } from '../external/md5.ts';
 import { Scheme } from '../cfds/base/scheme.ts';
-import { BloomFilter } from '../base/bloom.ts';
 import { GoatDB } from '../db/db.ts';
 import { ReadonlyJSONValue } from '../base/interfaces.ts';
+// import { BloomFilter } from '../base/bloom.ts';
+import { BloomFilter } from '../cpp/bloom_filter.ts';
 
 const BLOOM_FPR = 0.01;
 
 export type Entry<S extends Scheme = Scheme> = [
   key: string | null,
-  item: Item<S>,
+  item: Item<S>
 ];
 export type PredicateInfo<S extends Scheme, CTX> = {
   key: string;
@@ -21,7 +22,7 @@ export type PredicateInfo<S extends Scheme, CTX> = {
   ctx: CTX;
 };
 export type Predicate<S extends Scheme, CTX extends ReadonlyJSONValue> = (
-  info: PredicateInfo<S, CTX>,
+  info: PredicateInfo<S, CTX>
 ) => boolean;
 
 export type SortInfo<S extends Scheme, CTX> = {
@@ -32,7 +33,7 @@ export type SortInfo<S extends Scheme, CTX> = {
   ctx: CTX;
 };
 export type SortDescriptor<S extends Scheme, CTX> = (
-  info: SortInfo<S, CTX>,
+  info: SortInfo<S, CTX>
 ) => number;
 export type QuerySource<IS extends Scheme = Scheme, OS extends IS = IS> =
   | Repository
@@ -42,7 +43,7 @@ export type QuerySource<IS extends Scheme = Scheme, OS extends IS = IS> =
 export type QueryConfig<
   IS extends Scheme,
   OS extends IS,
-  CTX extends ReadonlyJSONValue,
+  CTX extends ReadonlyJSONValue
 > = {
   db: GoatDB;
   source: QuerySource<IS, OS>;
@@ -58,7 +59,7 @@ export type QueryEvent = EventDocumentChanged | 'LoadingFinished' | 'Closed';
 export class Query<
   IS extends Scheme,
   OS extends IS,
-  CTX extends ReadonlyJSONValue,
+  CTX extends ReadonlyJSONValue
 > extends Emitter<QueryEvent> {
   readonly id: string;
   readonly db: GoatDB;
@@ -127,6 +128,7 @@ export class Query<
     this._tempRecordForKey = new Map();
     // this._includedKeys = new Set();
     this._includedKeys = [];
+
     this._bloomFilterSize = 1024;
     this._bloomFilter = new BloomFilter({
       size: this._bloomFilterSize,
@@ -253,7 +255,7 @@ export class Query<
             ? this.repo
             : this.source) as Emitter<EventDocumentChanged>
         ).attach('DocumentChanged', (key: string) =>
-          this.onNewCommit(this.repo.headForKey(key)!),
+          this.onNewCommit(this.repo.headForKey(key)!)
         );
       }
     }
@@ -263,7 +265,7 @@ export class Query<
     if (!this._closed) {
       this.emit('Closed');
       this.repo.db.queryPersistence?.unregister(
-        this as unknown as Query<Scheme, Scheme, ReadonlyJSONValue>,
+        this as unknown as Query<Scheme, Scheme, ReadonlyJSONValue>
       );
       if (this._sourceListenerCleanup) {
         this._sourceListenerCleanup();
@@ -278,7 +280,7 @@ export class Query<
   protected suspend(): void {
     if (!this._closed) {
       this.repo.db.queryPersistence?.unregister(
-        this as unknown as Query<Scheme, Scheme, ReadonlyJSONValue>,
+        this as unknown as Query<Scheme, Scheme, ReadonlyJSONValue>
       );
       this._sourceListenerCleanup!();
       this._sourceListenerCleanup = undefined;
@@ -313,7 +315,7 @@ export class Query<
     key: string,
     prevDoc: Item<IS> | undefined,
     currentDoc: Item<IS>,
-    head?: Commit,
+    head?: Commit
   ): void {
     if (!prevDoc?.isEqual(currentDoc)) {
       if (head) {
@@ -371,7 +373,7 @@ export class Query<
         key,
         prevDoc as unknown as Item<IS>,
         currentDoc as unknown as Item<IS>,
-        currentHead,
+        currentHead
       );
     }
     this._age = Math.max(this._age, commit.age || 0);
@@ -426,7 +428,7 @@ export class Query<
       if (!this._loadingFinished) {
         this._loadingFinished = true;
         this.repo.db.queryPersistence?.register(
-          this as unknown as Query<Scheme, Scheme, ReadonlyJSONValue>,
+          this as unknown as Query<Scheme, Scheme, ReadonlyJSONValue>
         );
         await this.repo.db.queryPersistence?.flush(this.id);
         this.emit('LoadingFinished');
@@ -463,12 +465,12 @@ const gGeneratedQueryIds = new Map<string, string>();
 function generateQueryId<
   IS extends Scheme = Scheme,
   OS extends IS = IS,
-  CTX extends ReadonlyJSONValue = ReadonlyJSONValue,
+  CTX extends ReadonlyJSONValue = ReadonlyJSONValue
 >(
   predicate: Predicate<IS, CTX>,
   sortDescriptor?: SortDescriptor<OS, CTX>,
   ctx?: CTX,
-  ns?: string | null,
+  ns?: string | null
 ): string {
   const key =
     predicate.toString() +

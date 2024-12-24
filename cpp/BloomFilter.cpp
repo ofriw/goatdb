@@ -210,7 +210,7 @@ extern "C"
     }
 
     EMSCRIPTEN_KEEPALIVE
-    void addToFilter2(BloomFilter *filter, const uint8_t *data, size_t length)
+    void addToFilter(BloomFilter *filter, const uint8_t *data, size_t length)
     {
         if (filter != nullptr && data != nullptr)
         {

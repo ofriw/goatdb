@@ -4,6 +4,7 @@ import { coreValueCompare } from './base/core-types/comparable.ts';
 import { assert } from './base/error.ts';
 import { randomInt } from './base/math.ts';
 import { SchemeManager } from './cfds/base/scheme.ts';
+// import { BloomFilter } from './cpp/bloom_filterOriginal.ts';
 import { BloomFilter } from './cpp/bloom_filter.ts';
 import { GoatDB } from './db/db.ts';
 import { Query } from './repo/query.ts';
@@ -138,117 +139,134 @@ export async function testsMain(): Promise<void> {
   // const fileStart = performance.now();
   // await Deno.readFile(REPO_FILE_PATH);
   // console.log(`File read in ${(performance.now() - fileStart) / 1000} sec`);
-  // await BloomFilter.initNativeFunctions();
+
   const db = new GoatDB({
     path: DB_PATH,
   });
   console.log(`Opening Repo...`);
-  const repoPath = '/test/notes1M';
-  const openStart = performance.now();
-  const repo = await db.open(repoPath);
-  // const repo = db.getRepository(repoId)!;
-  console.log(
-    `Done. Open took ${
-      (performance.now() - openStart) / 1000
-    } sec.\n# Commits = ${repo
-      .numberOfCommits()
-      .toLocaleString()}\n# Keys = ${repo.storage
-      .numberOfKeys()
-      .toLocaleString()}`
-  );
-
-  if (repo.numberOfCommits() === 0) {
-    console.log(`Repository is empty. Populating...`);
-    const start = performance.now();
-    await populateDB(db);
-    await db.flush(repoPath);
-    const populatingTime = performance.now() - start;
-    console.log(
-      `Populating repo ended. Took ${populatingTime / 1000} sec, avg ${
-        populatingTime / ITEM_COUNT
-      }ms/item`
-    );
-  } else {
-    // const editCount = await editDB(db, 0.5);
-    // console.log(
-    //   `Edited ${editCount}.\n# Commits = ${repo
-    //     .numberOfCommits()
-    //     .toLocaleString()}\n# Keys = ${repo.storage
-    //     .numberOfKeys()
-    //     .toLocaleString()}`,
-    // );
-  }
-
-  console.log(`Starting read test...`);
-  const keys = shuffle(Array.from(db.keys(repoPath))).slice(0, 10);
-  const readStart = performance.now();
-  const testCount = 1000;
-  for (let i = 0; i < testCount; ++i) {
-    for (const k of keys) {
-      const item = db.item<SchemeNoteType>(repoPath, k);
-      item.get('text');
-    }
-  }
-  const readTime = (performance.now() - readStart) / testCount;
-  console.log(
-    `Reading ${keys.length.toLocaleString()} items took ${
-      readTime / 1000
-    } sec. Avg ${readTime / keys.length} ms / key`
-  );
-
-  // debugger;
-  // console.log(`Starting plain search...`);
-
-  // const dummyStart = performance.now();
-  // const results: [string, Document<SchemeNoteType>][] = [];
-
-  // const predicate = (key: string, doc: Document<SchemeNoteType>) =>
-  //   doc.get('text').startsWith('lorem');
-  // for (const k of repo.keys()) {
-  //   const doc = repo.valueForKey<SchemeNoteType>(k)![0];
-  //   if (predicate(k, doc)) {
-  //     results.push([k, doc]);
-  //   }
-  // }
-  // results.sort((a1, a2) =>
-  //   coreValueCompare(a1[1].get('text'), a2[1].get('text')),
-  // );
-  // console.log(
-  //   `Dummy finished in ${
-  //     (performance.now() - dummyStart) / 1000
-  //   } sec, found ${results.length.toLocaleString()}`,
-  // );
-
-  // debugger;
-  console.log(`Starting query...`);
-  const queryStart = performance.now();
-  let prevCount: number | undefined;
-  const queryIter = 10;
-  for (let i = 0; i < queryIter; ++i) {
-    const query = db.query({
-      source: repoPath,
-      scheme: kSchemeNote,
-      predicate: ({ item, ctx }) => item.get('text').startsWith(ctx.word),
-      sortDescriptor: ({ left, right }) =>
-        coreValueCompare(left.get('text'), right.get('text')),
-      ctx: {
-        word: 'lorem',
-      },
+  try {
+    console.log('Initializing BloomFilter...');
+    await BloomFilter.initNativeFunctions().catch((error) => {
+      console.error('Failed to initialize BloomFilter:', error);
+      throw error;
     });
-    await query.loadingFinished();
-    query.results();
-    query.close();
-    if (!prevCount) {
-      prevCount = query.count;
+    console.log('BloomFilter initialized successfully');
+
+    const db = new GoatDB({
+      path: DB_PATH,
+    });
+
+    const repoPath = '/test/notes1M';
+    const openStart = performance.now();
+    const repo = await db.open(repoPath);
+    // const repo = db.getRepository(repoId)!;
+    console.log(
+      `Done. Open took ${
+        (performance.now() - openStart) / 1000
+      } sec.\n# Commits = ${repo
+        .numberOfCommits()
+        .toLocaleString()}\n# Keys = ${repo.storage
+        .numberOfKeys()
+        .toLocaleString()}`
+    );
+
+    if (repo.numberOfCommits() === 0) {
+      console.log(`Repository is empty. Populating...`);
+      const start = performance.now();
+      await populateDB(db);
+      await db.flush(repoPath);
+      const populatingTime = performance.now() - start;
+      console.log(
+        `Populating repo ended. Took ${populatingTime / 1000} sec, avg ${
+          populatingTime / ITEM_COUNT
+        }ms/item`
+      );
     } else {
-      assert(prevCount === query.count);
+      // const editCount = await editDB(db, 0.5);
+      // console.log(
+      //   `Edited ${editCount}.\n# Commits = ${repo
+      //     .numberOfCommits()
+      //     .toLocaleString()}\n# Keys = ${repo.storage
+      //     .numberOfKeys()
+      //     .toLocaleString()}`,
+      // );
     }
+
+    console.log(`Starting read test...`);
+    const keys = shuffle(Array.from(db.keys(repoPath))).slice(0, 10);
+    const readStart = performance.now();
+    const testCount = 1000;
+    for (let i = 0; i < testCount; ++i) {
+      for (const k of keys) {
+        const item = db.item<SchemeNoteType>(repoPath, k);
+        item.get('text');
+      }
+    }
+    const readTime = (performance.now() - readStart) / testCount;
+    console.log(
+      `Reading ${keys.length.toLocaleString()} items took ${
+        readTime / 1000
+      } sec. Avg ${readTime / keys.length} ms / key`
+    );
+
+    // debugger;
+    // console.log(`Starting plain search...`);
+
+    // const dummyStart = performance.now();
+    // const results: [string, Document<SchemeNoteType>][] = [];
+
+    // const predicate = (key: string, doc: Document<SchemeNoteType>) =>
+    //   doc.get('text').startsWith('lorem');
+    // for (const k of repo.keys()) {
+    //   const doc = repo.valueForKey<SchemeNoteType>(k)![0];
+    //   if (predicate(k, doc)) {
+    //     results.push([k, doc]);
+    //   }
+    // }
+    // results.sort((a1, a2) =>
+    //   coreValueCompare(a1[1].get('text'), a2[1].get('text')),
+    // );
+    // console.log(
+    //   `Dummy finished in ${
+    //     (performance.now() - dummyStart) / 1000
+    //   } sec, found ${results.length.toLocaleString()}`,
+    // );
+
+    // debugger;
+
+    console.log(`Starting query...`);
+    const queryStart = performance.now();
+    let prevCount: number | undefined;
+    const queryIter = 10;
+    for (let i = 0; i < queryIter; ++i) {
+      const query = db.query({
+        source: repoPath,
+        scheme: kSchemeNote,
+        predicate: ({ item, ctx }) => item.get('text').startsWith(ctx.word),
+        sortDescriptor: ({ left, right }) =>
+          coreValueCompare(left.get('text'), right.get('text')),
+        ctx: {
+          word: 'lorem',
+        },
+      });
+      await query.loadingFinished();
+      query.results();
+      query.close();
+      if (!prevCount) {
+        prevCount = query.count;
+      } else {
+        assert(prevCount === query.count);
+      }
+    }
+    console.log(
+      `Query finished in ${
+        (performance.now() - queryStart) / queryIter
+      } ms.\n# Results = ${prevCount}`
+    );
+  } catch (error) {
+    console.error('Test failed:', error);
+    throw error;
   }
-  console.log(
-    `Query finished in ${
-      (performance.now() - queryStart) / queryIter
-    } ms.\n# Results = ${prevCount}`
-  );
 
   // Deno.exit();
 }

@@ -30,44 +30,56 @@ declare global {
 
 let moduleLoadPromise: Promise<void>;
 
-export function initializeModule(): Promise<void> {
+function initializeModule(): Promise<void> {
   if (!moduleLoadPromise) {
     moduleLoadPromise = (async () => {
-      // const wasmUrl =
-      //   self.Deno === undefined
-      //     ? new URL('/__system_assets/bloom_filter.wasm', self.location.href)
-      //     : new URL(
-      //         '../assets/__system_assets/bloom_filter.wasm',
-      //         import.meta.url
-      //       );
-      // const jsUrl =
-      //   self.Deno === undefined
-      //     ? new URL('/__system_assets/bloom_filter.js', self.location.href)
-      //     : new URL(
-      //         '../assets/__system_assets/bloom_filter.js',
-      //         import.meta.url
-      //       );
-
+      //       // const wasmUrl =
+      //       //   self.Deno === undefined
+      //       //     ? new URL('/__system_assets/bloom_filter.wasm', self.location.href)
+      //       //     : new URL(
+      //       //         '../assets/__system_assets/bloom_filter.wasm',
+      //       //         import.meta.url
+      //       //       );
+      //       // const jsUrl =
+      //       //   self.Deno === undefined
+      //       //     ? new URL('/__system_assets/bloom_filter.js', self.location.href)
+      //       //     : new URL(
+      //       //         '../assets/__system_assets/bloom_filter.js',
+      //       //         import.meta.url
+      //       //       );
       const wasmUrl = new URL('./bloom_filter.wasm', import.meta.url);
       const jsUrl = new URL('./bloom_filter.js', import.meta.url);
 
-      const wasmResponse = await fetch(wasmUrl);
-      const wasmBinary = await wasmResponse.arrayBuffer();
+      const [wasmResponse, jsResponse] = await Promise.all([
+        fetch(wasmUrl),
+        fetch(jsUrl),
+      ]);
 
-      const jsResponse = await fetch(jsUrl);
+      const wasmBinary = await wasmResponse.arrayBuffer();
       const moduleScript = await jsResponse.text();
 
-      return new Promise<void>((resolve) => {
-        const localModule = {
-          wasmBinary,
-          onRuntimeInitialized: () => {
-            (globalThis as any).Module = localModule;
-            resolve();
-          },
-        };
+      return new Promise<void>((resolve, reject) => {
+        try {
+          const moduleConfig = {
+            wasmBinary,
+            onRuntimeInitialized: () => resolve(),
+          };
 
-        const runScript = new Function('Module', moduleScript);
-        runScript(localModule);
+          const moduleFactory = new Function(
+            moduleScript + '\n;return createModule;'
+          )();
+          if (typeof moduleFactory !== 'function') {
+            throw new Error('Module initialization failed');
+          }
+
+          moduleFactory(moduleConfig)
+            .then((moduleInstance: any) => {
+              (globalThis as any).Module = moduleInstance;
+            })
+            .catch(reject);
+        } catch (error) {
+          reject(error);
+        }
       });
     })();
   }
@@ -92,7 +104,7 @@ export class BloomFilter {
     maxHashes: number
   ) => number;
 
-  private static add_to_filter2: (
+  private static add_to_filter: (
     ptr: number,
     strPtr: number,
     strLen: number
@@ -109,54 +121,66 @@ export class BloomFilter {
   private static get_bloom_filter_pointer: (ptr: number) => number;
   private static get_bloom_filter_size: (ptr: number) => number;
   private static get_bloom_filter_number_of_hashes: (ptr: number) => number;
-
   static async initNativeFunctions(): Promise<void> {
     if (!this.create_bloom_filter) {
       await initializeModule();
 
+      if (!Module || typeof Module.cwrap !== 'function') {
+        throw new Error('Module not properly initialized');
+      }
+
       this.stringStrategy.initialize(Module as EmscriptenModule);
 
-      this.create_bloom_filter = Module.cwrap('createBloomFilter', 'number', [
+      const setupFunction = (
+        name: string,
+        returnType: string,
+        argTypes: string[]
+      ) => {
+        const fn = Module.cwrap(name, returnType, argTypes);
+        return fn;
+      };
+
+      this.create_bloom_filter = setupFunction('createBloomFilter', 'number', [
         'number',
         'number',
         'number',
       ]);
 
-      this.create_bloom_filter_from_data = Module.cwrap(
+      this.create_bloom_filter_from_data = setupFunction(
         'createBloomFilterFromData',
         'number',
         ['number']
       );
 
-      this.add_to_filter2 = Module.cwrap('addToFilter2', 'void', [
+      this.add_to_filter = setupFunction('addToFilter', 'void', [
         'number',
         'number',
         'number',
       ]);
 
-      this.check_in_filter = Module.cwrap('checkInFilter', 'number', [
+      this.check_in_filter = setupFunction('checkInFilter', 'number', [
         'number',
         'number',
         'number',
       ]);
 
-      this.delete_bloom_filter = Module.cwrap('deleteBloomFilter', 'void', [
+      this.delete_bloom_filter = setupFunction('deleteBloomFilter', 'void', [
         'number',
       ]);
 
-      this.get_bloom_filter_pointer = Module.cwrap(
+      this.get_bloom_filter_pointer = setupFunction(
         'getBloomFilterPointer',
         'number',
         ['number']
       );
 
-      this.get_bloom_filter_size = Module.cwrap(
+      this.get_bloom_filter_size = setupFunction(
         'getBloomFilterSize',
         'number',
         ['number']
       );
 
-      this.get_bloom_filter_number_of_hashes = Module.cwrap(
+      this.get_bloom_filter_number_of_hashes = setupFunction(
         'getBloomFilterNumberOfHashes',
         'number',
         ['number']
@@ -184,23 +208,15 @@ export class BloomFilter {
   }
 
   add(value: string): void {
-    if (!value) {
-      throw new Error('Value cannot be empty');
-    }
-
     const { ptr, length } = BloomFilter.stringStrategy.writeString(value);
     try {
-      BloomFilter.add_to_filter2(this.ptr, ptr, length);
+      BloomFilter.add_to_filter(this.ptr, ptr, length);
     } finally {
       BloomFilter.stringStrategy.free(ptr);
     }
   }
 
   has(value: string): boolean {
-    if (!value) {
-      throw new Error('Value cannot be empty');
-    }
-
     const { ptr, length } = BloomFilter.stringStrategy.writeString(value);
     try {
       return BloomFilter.check_in_filter(this.ptr, ptr, length) !== 0;
@@ -214,16 +230,11 @@ export class BloomFilter {
     if (!ptr) {
       throw new Error('Failed to get bloom filter pointer');
     }
-
     const data = new Uint8Array(Module.HEAPU8.buffer, ptr, this.size);
     return encodeBase64(data);
   }
 
   static deserialize(b64: string): BloomFilter {
-    if (!b64) {
-      throw new Error('Base64 string cannot be empty');
-    }
-
     const binaryString = atob(b64);
     const { ptr: tempPtr, length } =
       this.stringStrategy.writeString(binaryString);

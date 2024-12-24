@@ -25,6 +25,7 @@ import {
   JSONCyclicalEncoder,
 } from '../base/core-types/encoding/json.ts';
 // import { BloomFilter } from '../base/bloom.ts';
+// import { BloomFilter } from '../cpp/bloom_filterOriginal.ts';
 import { BloomFilter } from '../cpp/bloom_filter.ts';
 import { encodeBase64 } from 'std/encoding/base64.ts';
 import { decodeBase64 } from '../base/buffer.ts';
@@ -318,7 +319,7 @@ export class Commit implements Encodable, Decodable, Equatable, Comparable {
 
   static fromJSArr(
     orgId: string,
-    arr: readonly ReadonlyJSONObject[],
+    arr: readonly ReadonlyJSONObject[]
   ): Commit[] {
     const result: Commit[] = [];
     for (const obj of arr) {
@@ -399,14 +400,14 @@ export function commitContentsIsDelta(c: CommitContents): c is DeltaContents {
 }
 
 export function commitContentsIsDocument<S extends Scheme>(
-  c: CommitContents,
+  c: CommitContents
 ): c is DocContents {
   return c.record instanceof Item;
 }
 
 export function commitContentsSerialize(
   c: CommitContents,
-  encoder: Encoder,
+  encoder: Encoder
 ): void {
   if (commitContentsIsDocument(c)) {
     encoder.set('r', c.record.toJS());

@@ -38,10 +38,12 @@ import {
   ReadonlyJSONObject,
   ReadonlyJSONValue,
 } from '../base/interfaces.ts';
-import { BloomFilter } from '../cpp/bloom_filter.ts';
+// import { BloomFilter } from '../cpp/bloom_filter.ts ';
 import { MemRepoStorage } from '../repo/repo.ts';
 import { QueryConfig, Query } from '../repo/query.ts';
 import { md51 } from '../external/md5.ts';
+// import { BloomFilter } from '../cpp/bloom_filterOriginal.ts';
+import { BloomFilter } from '../cpp/bloom_filter.ts';
 
 export interface DBConfig {
   path: string;
@@ -92,7 +94,7 @@ export class GoatDB {
     }
     if (this.path) {
       this.queryPersistence = new QueryPersistence(
-        new QueryPersistenceFile(this.path),
+        new QueryPersistenceFile(this.path)
       );
     }
   }
@@ -195,7 +197,7 @@ export class GoatDB {
   async create<S extends Scheme>(
     path: string,
     scheme: S,
-    data: SchemeDataType<S>,
+    data: SchemeDataType<S>
   ): Promise<void> {
     const repo = await this.open(path);
     let key = itemPathGetPart(path, ItemPathPart.Item);
@@ -208,7 +210,7 @@ export class GoatDB {
         scheme,
         data,
       }),
-      undefined,
+      undefined
     );
   }
 
@@ -247,14 +249,14 @@ export class GoatDB {
    * @returns
    */
   query<IS extends Scheme, CTX extends ReadonlyJSONValue, OS extends IS = IS>(
-    config: Omit<QueryConfig<IS, OS, CTX>, 'db'>,
+    config: Omit<QueryConfig<IS, OS, CTX>, 'db'>
   ): Query<IS, OS, CTX> {
     let id = config.id;
     if (!id) {
       id = md51(
         (config.predicate !== undefined
           ? config.predicate.toString()
-          : 'undefined') + config.sortDescriptor?.toString(),
+          : 'undefined') + config.sortDescriptor?.toString()
       );
     }
     let q = this._openQueries.get(id);
@@ -282,13 +284,13 @@ export class GoatDB {
         this.orgId,
         settings.currentSession,
         settings.roots,
-        settings.trustedSessions,
+        settings.trustedSessions
       );
       if (this._peerURLs) {
         const syncConfig = isBrowser() ? kSyncConfigClient : kSyncConfigServer;
         this._syncSchedulers = this._peerURLs.map(
           (url) =>
-            new SyncScheduler(url, syncConfig, this._trustPool!, this.orgId),
+            new SyncScheduler(url, syncConfig, this._trustPool!, this.orgId)
         );
       }
     }
@@ -297,7 +299,7 @@ export class GoatDB {
 
   private async _openImpl(
     repoId: string,
-    opts?: OpenOptions,
+    opts?: OpenOptions
   ): Promise<Repository> {
     await BloomFilter.initNativeFunctions();
     repoId = Repository.normalizeId(repoId);
@@ -305,7 +307,7 @@ export class GoatDB {
     this._repositories.set(repoId, repo);
     const file = await JSONLogFileOpen(
       path.join(this.path, relativePathForRepo(repoId)),
-      true,
+      true
     );
     // const commitIds = new Set<string>();
     this._files.set(repoId, file);
@@ -344,7 +346,7 @@ export class GoatDB {
           repoId,
           scheduler.syncConfig,
           scheduler,
-          this.orgId,
+          this.orgId
         );
         clients.push(c);
         c.ready = true;

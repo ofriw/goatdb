@@ -5,7 +5,6 @@ export interface StringStrategy {
   initialize(module: EmscriptenModule): void;
 }
 
-// Current implementation using WasmMemory
 export class WasmMemoryCopyStrategy implements StringStrategy {
   private static heap: Uint8Array;
   private static encoder = new TextEncoder();
@@ -55,7 +54,5 @@ export class JSStringBuiltinStrategy implements StringStrategy {
     throw new Error('JS String Builtin strategy not implemented yet');
   }
 
-  free(ptr: number): void {
-    // Will be implemented when needed
-  }
+  free(ptr: number): void {}
 }
