@@ -236,8 +236,7 @@ export class BloomFilter {
 
   static deserialize(b64: string): BloomFilter {
     const binaryString = atob(b64);
-    const { ptr: tempPtr, length } =
-      this.stringStrategy.writeString(binaryString);
+    const { ptr: tempPtr } = this.stringStrategy.writeString(binaryString);
 
     try {
       const filterPtr = this.create_bloom_filter_from_data(tempPtr);
