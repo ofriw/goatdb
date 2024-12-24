@@ -48,7 +48,7 @@ export class RepoClient extends Emitter<typeof EVENT_STATUS_CHANGED> {
 
   constructor(
     readonly repo: Repository,
-    readonly id: string,
+    readonly repoPath: string,
     readonly syncConfig: SyncConfig,
     readonly scheduler: SyncScheduler,
     readonly orgId: string,
@@ -73,7 +73,7 @@ export class RepoClient extends Emitter<typeof EVENT_STATUS_CHANGED> {
         });
       },
       true,
-      `Sync timer ${id}`,
+      `Sync timer ${repoPath}`,
       // true,
     );
     this._syncFreqAvg = new MovingAverage(
@@ -241,7 +241,7 @@ export class RepoClient extends Emitter<typeof EVENT_STATUS_CHANGED> {
     let syncResp: SyncMessage;
     try {
       syncResp = (await this.scheduler.send(
-        this.id,
+        this.repoPath,
         reqMsg,
         priority,
       )) as typeof reqMsg;

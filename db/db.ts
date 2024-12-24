@@ -1,9 +1,8 @@
 import * as path from 'std/path/mod.ts';
 import { Session, TrustPool } from './session.ts';
 import { Repository, RepositoryConfig } from '../repo/repo.ts';
-import { DBSettingsProvider } from './settings/settings.ts';
+import { DBSettings, DBSettingsProvider } from './settings/settings.ts';
 import { FileSettings } from './settings/file.ts';
-import { IDBSettings } from './settings/idb.ts';
 import { Commit } from '../repo/commit.ts';
 import { RepoClient } from '../net/client.ts';
 import { kSyncConfigClient, kSyncConfigServer } from '../net/sync-scheduler.ts';
@@ -36,6 +35,8 @@ import { ReadonlyJSONObject, ReadonlyJSONValue } from '../base/interfaces.ts';
 import { BloomFilter } from '../cpp/bloom_filter.ts';
 import { QueryConfig, Query } from '../repo/query.ts';
 import { md51 } from '../external/md5.ts';
+import { sendLoginEmail } from '../net/rest-api.ts';
+import { normalizeEmail } from '../base/string.ts';
 
 /**
  * Denotes the type of the requested operation.
@@ -122,15 +123,17 @@ export class GoatDB {
   private readonly _authConfig: AuthConfig;
   private _trustPool: TrustPool | undefined;
   private _syncSchedulers: SyncScheduler[] | undefined;
+  private _trustPoolPromise: Promise<TrustPool>;
+  private _ready: boolean = false;
 
   constructor(config: DBConfig) {
     startJSONLogWorkerIfNeeded();
     this.path = config.path;
     this.schemaManager = config.schemaManager || SchemaManager.default;
-    this._settingsProvider =
-      typeof self.Deno === 'undefined'
-        ? new IDBSettings()
-        : new FileSettings(this.path);
+    this._settingsProvider = new FileSettings(
+      this.path,
+      isBrowser() ? 'client' : 'server',
+    );
     this.orgId = config?.orgId || 'localhost';
     this._authConfig = config.authRules || [];
     this._repositories = new Map();
@@ -150,6 +153,64 @@ export class GoatDB {
         new QueryPersistenceFile(this.path),
       );
     }
+    this._trustPoolPromise = this._getTrustPoolImpl();
+  }
+
+  /**
+   * Returns whether this DB instance is ready to receive commands or is it
+   * still performing the initial load.
+   */
+  get ready(): boolean {
+    return this._ready;
+  }
+
+  /**
+   * Returns the settings object of this DB instance.
+   */
+  get settings(): DBSettings {
+    return this._settingsProvider.settings;
+  }
+
+  /**
+   * Returns whether this DB instance uses an anonymous session or a session
+   * that's attached to a known user.
+   */
+  get loggedIn(): boolean {
+    return this._trustPool?.currentSession.owner !== undefined;
+  }
+
+  /**
+   * A convenience promise form of the `ready` flag. When the promise returns,
+   * this DB instance is ready to receive commands.
+   *
+   * @throws ServiceUnavailable if the initial load failed.
+   */
+  async readyPromise(): Promise<void> {
+    await this._trustPoolPromise;
+  }
+
+  /**
+   * When connecting to a new DB instance on the client, it'll start with an
+   * anonymous session that's not attached to any user in the system. Call this
+   * method with a user's email, to initiate an email-based login sequence that
+   * will end with the current session being attached to the user owning this
+   * email.
+   *
+   * This login sequence sends a temporary magic link to the provided email
+   * address. Once clicked, the user item will be automatically created in
+   * /sys/users and attached to the current session.
+   *
+   * @param   email The target of the magic link.
+   * @returns true if the magic link had been successfully sent, false
+   *          otherwise.
+   */
+  async loginWithMagicLinkEmail(email: string): Promise<boolean> {
+    return await sendLoginEmail(
+      (
+        await this.getTrustPool()
+      ).currentSession,
+      normalizeEmail(email),
+    );
   }
 
   /**
@@ -400,15 +461,19 @@ export class GoatDB {
    *
    * @returns The trust pool of this DB instance.
    */
-  async getTrustPool(): Promise<TrustPool> {
-    if (await this.createTrustPoolIfNeeded()) {
-      // Open /sys/sessions so all known sessions are properly loaded into our
-      // new trust pool
-      await this.open('/sys/sessions');
-      // Open /sys/users so we can perform login and basic operations without
-      // waiting
-      await this.open('/sys/users');
-    }
+  getTrustPool(): Promise<TrustPool> {
+    return this._trustPoolPromise;
+  }
+
+  private async _getTrustPoolImpl(): Promise<TrustPool> {
+    await this._createTrustPool();
+    // Open /sys/sessions so all known sessions are properly loaded into our
+    // new trust pool
+    await this.open('/sys/sessions');
+    // Open /sys/users so we can perform login and basic operations without
+    // waiting
+    await this.open('/sys/users');
+    this._ready = true;
     return this._trustPool!;
   }
 
@@ -417,32 +482,28 @@ export class GoatDB {
     return this._repoClients?.get(repoId) || [];
   }
 
-  private async createTrustPoolIfNeeded(): Promise<boolean> {
-    if (!this._trustPool) {
-      await this._settingsProvider.load();
-      const settings = this._settingsProvider.settings;
-      this._trustPool = new TrustPool(
-        this.orgId,
-        settings.currentSession,
-        settings.roots,
-        settings.trustedSessions,
+  private async _createTrustPool(): Promise<void> {
+    await this._settingsProvider.load();
+    const settings = this._settingsProvider.settings;
+    this._trustPool = new TrustPool(
+      this.orgId,
+      settings.currentSession,
+      settings.roots,
+      settings.trustedSessions,
+    );
+    if (this._peerURLs) {
+      const syncConfig = isBrowser() ? kSyncConfigClient : kSyncConfigServer;
+      this._syncSchedulers = this._peerURLs.map(
+        (url) =>
+          new SyncScheduler(
+            url,
+            syncConfig,
+            this._trustPool!,
+            this.orgId,
+            this.schemaManager,
+          ),
       );
-      if (this._peerURLs) {
-        const syncConfig = isBrowser() ? kSyncConfigClient : kSyncConfigServer;
-        this._syncSchedulers = this._peerURLs.map(
-          (url) =>
-            new SyncScheduler(
-              url,
-              syncConfig,
-              this._trustPool!,
-              this.orgId,
-              this.schemaManager,
-            ),
-        );
-      }
-      return true;
     }
-    return false;
   }
 
   private async _openImpl(
@@ -455,7 +516,6 @@ export class GoatDB {
     // Special Case: skip the call to loadSysSessions() when loading user
     // related repos to avoid a loop.
     if (repoId === '/sys/sessions' || repoId === '/sys/users') {
-      await this.createTrustPoolIfNeeded();
       trustPool = this._trustPool!;
     } else {
       trustPool = await this.getTrustPool();
@@ -474,6 +534,7 @@ export class GoatDB {
     repo.mute();
     this.queryPersistence?.get(repoId);
     const cursor = await JSONLogFileStartCursor(file);
+    let loadedFromBackup = false;
     let done = false;
     let nextPromise = JSONLogFileScan(cursor);
     do {
@@ -482,6 +543,9 @@ export class GoatDB {
       nextPromise = JSONLogFileScan(cursor);
       // [entries, done] = await JSONLogFileScan(cursor);
       const commits = Commit.fromJSArr(this.orgId, entries, this.schemaManager);
+      if (commits.length > 0) {
+        loadedFromBackup = true;
+      }
       // for (const c of commits) {
       //   commitIds.add(c.id);
       // }
@@ -509,6 +573,9 @@ export class GoatDB {
           this.orgId,
         );
         clients.push(c);
+        if (!loadedFromBackup) {
+          await c.sync();
+        }
         c.ready = true;
         c.startSyncing();
       }

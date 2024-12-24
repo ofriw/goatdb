@@ -53,7 +53,7 @@ export function syncConfigGetCycles(
 }
 
 interface SyncRequest {
-  id: string;
+  path: string;
   msg: SyncMessage;
 }
 
@@ -103,7 +103,7 @@ export class SyncScheduler {
   }
 
   send(
-    id: string,
+    path: string,
     msg: SyncMessage,
     priority: SyncPriority = SyncPriority.normal,
   ): Promise<SyncMessage> {
@@ -118,7 +118,7 @@ export class SyncScheduler {
       queue = [];
       this._pendingRequests.set(priority, queue);
     }
-    queue.push({ req: { id, msg }, resolve, reject });
+    queue.push({ req: { path, msg }, resolve, reject });
     return result;
   }
 
@@ -197,7 +197,7 @@ export class SyncScheduler {
       for (const req of pendingRequests) {
         let found = false;
         for (const resp of json as ReadonlyJSONObject[]) {
-          if (resp.id === req.req.id) {
+          if (resp.path === req.req.path) {
             const decoder = JSONCyclicalDecoder.get(
               resp.res as ReadonlyJSONObject,
             );

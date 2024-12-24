@@ -14,7 +14,7 @@ import { PrometheusLogStream } from '../../server/prometeus-stream.ts';
 // import { SyncEndpoint, SyncService } from './sync.ts';
 import { StaticAssets, StaticAssetsEndpoint } from './static-assets.ts';
 import { ConsoleLogStream } from '../../logging/console-stream.ts';
-// import { AuthEndpoint } from './auth.ts';
+import { AuthEndpoint } from './auth.ts';
 import { HealthCheckEndpoint } from './health.ts';
 import { MetricsMiddleware, PrometheusMetricsEndpoint } from './metrics.ts';
 import { SettingsService } from './settings.ts';
@@ -36,6 +36,7 @@ import { prettyJSON } from '../../base/common.ts';
 import { GoatDB } from '../../db/db.ts';
 import { SyncEndpoint } from './sync.ts';
 import { persistSession } from './auth.ts';
+import { kSchemaTask } from '../../web-app/src/schemes.ts';
 // import { StatsEndpoint } from './stats.ts';
 // import {
 //   BenchmarkResults,
@@ -43,7 +44,9 @@ import { persistSession } from './auth.ts';
 //   runInsertBenchmark,
 // } from './benchmark.ts';
 
-const BASE_ORG_ID = '<global>';
+kSchemaTask;
+
+const BASE_ORG_ID = 'localhost';
 export const ENV_REPLICAS = 'REPLICAS';
 
 interface BaseServerContext {
@@ -268,7 +271,7 @@ export class Server {
     // Health check
     this.registerEndpoint(new HealthCheckEndpoint());
     // Auth
-    // this.registerEndpoint(new AuthEndpoint());
+    this.registerEndpoint(new AuthEndpoint());
     // Stats
     // this.registerEndpoint(new StatsEndpoint());
     // Sync
@@ -293,6 +296,7 @@ export class Server {
     };
     // Setup Settings service
     await this._baseContext.settings.setup(services);
+    await services.db.readyPromise();
     await persistSession(services, services.settings.session);
     await this._baseContext.settings.start();
     // await this._baseContext.email.setup(services);

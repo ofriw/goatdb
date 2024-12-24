@@ -89,7 +89,6 @@ export class StaticAssetsEndpoint implements Endpoint {
       staticEP[`${orgPathPrefix}${epRelativePath.substring(1)}`] ||
       staticEP[epRelativePath];
 
-    debugger;
     if (asset && epRelativePath === '/app.js') {
       const result: string[] = [];
       for (const p of Object.keys(staticEP)) {

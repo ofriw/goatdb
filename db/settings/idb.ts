@@ -30,9 +30,9 @@ export class IDBSettings implements DBSettingsProvider {
       this._settings = entries[0];
     } else {
       const keys = await generateKeyPair();
-      // const [publicSession, serverRoots] = await createNewSession(
-      //   keys.publicKey,
-      // );
+      const [publicSession, serverRoots] = await createNewSession(
+        keys.publicKey,
+      );
       const currentSession = await generateSession('root');
       // assert(publicSession !== undefined, 'Session creation failed');
       // const currentSession: OwnedSession = {

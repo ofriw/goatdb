@@ -20,7 +20,7 @@ import { HTTPMethod } from '../../logging/metrics.ts';
 import { Endpoint, ServerServices } from './server.ts';
 import { getBaseURL, getRequestPath } from './utils.ts';
 // import { ResetPasswordEmail } from '../../emails/reset-password.tsx';
-import { kSchemaUser, Schema, SchemaUserType } from '../../cfds/base/schema.ts';
+import { kSchemaUser, Schema, SchemaTypeUser } from '../../cfds/base/schema.ts';
 import { normalizeEmail } from '../../base/string.ts';
 import { ReadonlyJSONObject } from '../../base/interfaces.ts';
 import { accessDenied } from '../../cfds/base/errors.ts';
@@ -142,7 +142,7 @@ export class AuthEndpoint implements Endpoint {
     const resp = new Response(
       JSON.stringify({
         session: encodedSession,
-        roots: fetchEncodedRootSessions(services.db),
+        roots: await fetchEncodedRootSessions(services.db),
       }),
     );
     resp.headers.set('Content-Type', 'application/json');
@@ -170,7 +170,10 @@ export class AuthEndpoint implements Endpoint {
       return responseForError('AccessDenied');
     }
 
-    const requestingSession = fetchSessionById(services, requestingSessionId);
+    const requestingSession = await fetchSessionById(
+      services,
+      requestingSessionId,
+    );
     if (!requestingSession) {
       return responseForError('AccessDenied');
     }
@@ -240,7 +243,7 @@ export class AuthEndpoint implements Endpoint {
       if (!signerId) {
         return this.redirectHome(services);
       }
-      const signerSession = fetchSessionById(services, signerId);
+      const signerSession = await fetchSessionById(services, signerId);
       if (
         !signerSession ||
         signerSession.owner !== 'root' || // Only root may sign login tokens
@@ -299,6 +302,7 @@ export async function persistSession(
   const repo = await services.db.open('/sys/sessions');
   const record = await sessionToRecord(session);
   await repo.setValueForKey(session.id, record, undefined);
+  await services.db.flush('/sys/sessions');
 }
 
 export async function fetchEncodedRootSessions(
@@ -322,7 +326,7 @@ async function fetchUserByEmail(
   email: string,
 ): Promise<{
   key: string | undefined;
-  item: Item<SchemaUserType> | undefined;
+  item: Item<SchemaTypeUser> | undefined;
 }> {
   email = normalizeEmail(email);
   const query = services.db.query({
@@ -349,26 +353,26 @@ async function fetchUserByEmail(
       key,
       item: services.db
         .repository('/sys/users')!
-        .valueForKey<SchemaUserType>(key)![0],
+        .valueForKey<SchemaTypeUser>(key)![0],
     };
   }
   return { key: undefined, item: undefined };
 }
 
-export function fetchSessionById(
+export async function fetchSessionById(
   services: ServerServices,
   sessionId: string,
-): Session | undefined {
-  return services.trustPool.getSession(sessionId);
+): Promise<Session | undefined> {
+  return (await services.db.getTrustPool()).getSession(sessionId);
 }
 
 export function fetchUserById(
   services: ServerServices,
   userId: string,
-): Item<SchemaUserType> | undefined {
+): Item<SchemaTypeUser> | undefined {
   const entry = services.db
     .repository('/sys/users')!
-    .valueForKey<SchemaUserType>(userId);
+    .valueForKey<SchemaTypeUser>(userId);
   return entry && entry[0];
 }
 
@@ -389,7 +393,11 @@ export async function requireSignedUser(
   requestOrSignature: Request | string,
   role?: Role,
 ): Promise<
-  [userId: string | null, userItem: Item | undefined, userSession: Session]
+  [
+    userId: string | null,
+    userItem: Item<SchemaTypeUser> | undefined,
+    userSession: Session,
+  ]
 > {
   const signature =
     typeof requestOrSignature === 'string'
@@ -399,7 +407,7 @@ export async function requireSignedUser(
   if (!signature) {
     throw accessDenied();
   }
-  const signerSession = fetchSessionById(
+  const signerSession = await fetchSessionById(
     services,
     sessionIdFromSignature(signature),
   );

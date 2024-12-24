@@ -199,7 +199,7 @@ export const kSchemaSession = {
     },
   },
 } as const;
-export type SchemaSessionType = typeof kSchemaSession;
+export type SchemaTypeSession = typeof kSchemaSession;
 
 /**
  * Each scheme is potentially linked to a specific user (unless it's an
@@ -221,7 +221,7 @@ export const kSchemaUser = {
     },
   },
 } as const;
-export type SchemaUserType = typeof kSchemaUser;
+export type SchemaTypeUser = typeof kSchemaUser;
 
 /**
  * The schemaManager acts as a registry of known schemas for a given GoatDB

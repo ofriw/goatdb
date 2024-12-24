@@ -72,11 +72,10 @@ export class SyncEndpoint implements Endpoint {
     );
     const results: JSONArray = [];
     for (const r of encodedRequests) {
-      const { storage, id, msg } = r;
+      const { path, msg } = r;
       results.push({
-        storage,
-        id,
-        res: await this.doSync(services, storage, id, userSession, msg),
+        path,
+        res: await this.doSync(services, path, userSession, msg),
       });
     }
     const respJsonStr = JSON.stringify(results);
@@ -85,8 +84,7 @@ export class SyncEndpoint implements Endpoint {
 
   private async doSync(
     services: ServerServices,
-    storageType: string,
-    resourceId: string,
+    path: string,
     userSession: Session,
     json: JSONObject,
   ): Promise<JSONObject> {
@@ -95,22 +93,17 @@ export class SyncEndpoint implements Endpoint {
       json,
       async (values) =>
         (
-          await services.db
-            .repository(storageType, resourceId)!
-            .persistCommits(values)
+          await services.db.repository(path)!.persistCommits(values)
         ).length,
-      () =>
+      async () =>
         mapIterable(
-          services.db.repository(storageType, resourceId)!.commits(userSession),
+          (await services.db.open(path)).commits(userSession),
           (c) => [c.id, c],
         ),
-      () =>
-        services.db
-          .repository(storageType, resourceId)!
-          .numberOfCommits(userSession),
-      services.db.clientsForRepo(resourceId),
+      () => services.db.repository(path)!.numberOfCommits(userSession),
+      services.db.clientsForRepo(path),
       true,
-      storageType === 'sys',
+      path.startsWith('/sys/'),
     );
   }
 
@@ -118,7 +111,7 @@ export class SyncEndpoint implements Endpoint {
     services: ServerServices,
     msgJSON: JSONObject,
     persistCommits: (commits: Commit[]) => Promise<number>,
-    fetchAll: () => Iterable<[string, Commit]>,
+    fetchAll: () => Promise<Iterable<[string, Commit]>>,
     getLocalCount: () => number,
     replicas: Iterable<RepoClient> | undefined,
     includeMissing: boolean,
@@ -151,7 +144,7 @@ export class SyncEndpoint implements Endpoint {
 
     const syncResp = SyncMessage.build(
       msg.filter,
-      fetchAll(),
+      await fetchAll(),
       getLocalCount(),
       msg.size,
       syncCycles,

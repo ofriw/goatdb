@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { createUseStyles } from 'react-jss';
-import { useDB, useQuery } from '../../react/db.tsx';
+import { useDB, useDBReady, useQuery } from '../../react/db.tsx';
 import { kSchemaTask } from './schemes.ts';
 
 const REPO_PATH = '/data/tasks';
@@ -31,7 +31,7 @@ export function Header() {
   );
 }
 
-export function App() {
+export function Contents() {
   const styles = useAppStyles();
   const query = useQuery({
     schema: kSchemaTask,
@@ -48,4 +48,16 @@ export function App() {
       ))}
     </div>
   );
+}
+
+export function App() {
+  const ready = useDBReady();
+
+  if (ready === 'error') {
+    return <div>Error! Please reload the page.</div>;
+  }
+  if (ready === 'loading') {
+    return <div>Loading...</div>;
+  }
+  return <Contents />;
 }

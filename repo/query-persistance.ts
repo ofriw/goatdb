@@ -68,21 +68,21 @@ export class QueryPersistence {
   }
 
   register(query: Query<Schema, Schema, ReadonlyJSONValue>): void {
-    let set = this._queries.get(query.repo.id);
+    let set = this._queries.get(query.repo.path);
     if (!set) {
       set = new Set();
-      this._queries.set(query.repo.id, set);
+      this._queries.set(query.repo.path, set);
     }
     set.add(query);
-    this.flush(query.repo.id);
+    this.flush(query.repo.path);
   }
 
   unregister(query: Query<Schema, Schema, ReadonlyJSONValue>): void {
-    const set = this._queries.get(query.repo.id);
+    const set = this._queries.get(query.repo.path);
     if (set) {
       set.delete(query);
       if (set.size === 0) {
-        this._queries.delete(query.repo.id);
+        this._queries.delete(query.repo.path);
         this._persistedGeneration.delete(query);
       }
     }

@@ -101,5 +101,5 @@ export function runGC(): void {
 }
 
 export function isBrowser(): boolean {
-  return typeof self.Deno === undefined;
+  return typeof self.Deno === 'undefined';
 }

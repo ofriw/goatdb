@@ -85,7 +85,6 @@ export class Repository<
   readonly storage: ST;
   readonly trustPool: TrustPool;
   readonly allowedNamespaces: string[] | undefined;
-  readonly path: string;
   private readonly _cachedHeadsByKey: Map<string, CachedHead>;
   readonly authorizer?: AuthRule;
   private readonly _cachedRecordForCommit: Map<string, Item>;
@@ -104,7 +103,7 @@ export class Repository<
 
   constructor(
     readonly db: GoatDB,
-    readonly id: string,
+    readonly path: string,
     trustPool: TrustPool,
     {
       allowedNamespaces,
@@ -114,9 +113,8 @@ export class Repository<
     }: RepositoryConfig<ST> = {},
   ) {
     super();
-    this.id = Repository.normalizePath(id);
+    this.path = Repository.normalizePath(path);
     this.storage = storage || (new MemRepoStorage() as unknown as ST);
-    this.path = `/${this.storage}/${this.id}`;
     this.trustPool = trustPool;
     this.allowedNamespaces = allowedNamespaces;
     this.authorizer = authorizer;
@@ -1370,7 +1368,7 @@ export class Repository<
     //   result.filter((c) => this.commitIsHighProbabilityLeaf(c)),
     // )) {
     for (const c of commitsAffectingTmpRecords) {
-      this._runUpdatesOnNewLeafCommit(c);
+      await this._runUpdatesOnNewLeafCommit(c);
     }
     // Notify everyone else
     if (this.priorityRepo || typeof Deno !== 'undefined') {
@@ -1392,7 +1390,7 @@ export class Repository<
     return result;
   }
 
-  private _runUpdatesOnNewLeafCommit(commit: Commit): void {
+  private async _runUpdatesOnNewLeafCommit(commit: Commit): Promise<void> {
     // Auto add newly discovered sessions to our trust pool
     if (commit.scheme?.ns === kSchemaSession.ns) {
       this._cachedHeadsByKey.delete(commit.key);
@@ -1400,9 +1398,10 @@ export class Repository<
       if (!headEntry) {
         return;
       }
-      sessionFromRecord(headEntry[0]).then((session) => {
-        this.trustPool.addSession(session, commit);
-      });
+      await this.trustPool.addSession(
+        await sessionFromRecord(headEntry[0]),
+        commit,
+      );
     }
     this.emit('DocumentChanged', commit.key);
   }

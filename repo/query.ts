@@ -384,7 +384,7 @@ export class Query<
   private async scanRepo(): Promise<void> {
     const startTime = performance.now();
     const repo = this.repo;
-    const cache = await repo.db.queryPersistence?.get(repo.id, this.id);
+    const cache = await repo.db.queryPersistence?.get(repo.path, this.id);
     // let ageChange = 0;
     let skipped = 0;
     let total = 0;
