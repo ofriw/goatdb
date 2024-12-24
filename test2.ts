@@ -131,14 +131,14 @@ async function populateDB(db: GoatDB): Promise<void> {
 }
 
 const REPO_FILE_PATH =
-  '/Users/amit-steiner/Documents/Amit/goatDB/test/notes.jsonl';
+  '/Users/amit-steiner/Documents/Amit/goatDB/test/notes1M.jsonl';
 
 const DB_PATH = '/Users/amit-steiner/Documents/Amit/goatDB/';
 
 export async function testsMain(): Promise<void> {
-  // const fileStart = performance.now();
-  // await Deno.readFile(REPO_FILE_PATH);
-  // console.log(`File read in ${(performance.now() - fileStart) / 1000} sec`);
+  const fileStart = performance.now();
+  await Deno.readFile(REPO_FILE_PATH);
+  console.log(`File read in ${(performance.now() - fileStart) / 1000} sec`);
 
   const db = new GoatDB({
     path: DB_PATH,

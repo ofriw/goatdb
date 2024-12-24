@@ -39,7 +39,7 @@ interface JSONLogFile {
 
 async function JSONLogFileOpen(
   path: string,
-  write = false,
+  write = false
 ): Promise<JSONLogFile> {
   const impl = FileImplGet();
   return {
@@ -70,7 +70,7 @@ interface JSONLogFileCursor {
 }
 
 async function JSONLogFileStartCursor(
-  file: JSONLogFile,
+  file: JSONLogFile
 ): Promise<JSONLogFileCursor> {
   const totalFileBytes = await file.impl.seek(file.handle, 0, 'end');
   await file.impl.seek(file.handle, 0, 'start');
@@ -95,7 +95,7 @@ async function JSONLogFileScan(cursor: JSONLogFileCursor): Promise<ScanResult> {
     while (cursor.readBufLen <= 0) {
       const bytesRead = await cursor.file.impl.read(
         cursor.file.handle,
-        cursor.readBuf,
+        cursor.readBuf
       );
       // next read()
       if (bytesRead === null) {
@@ -103,7 +103,7 @@ async function JSONLogFileScan(cursor: JSONLogFileCursor): Promise<ScanResult> {
           await cursor.file.impl.seek(cursor.file.handle, 0, 'end');
           await cursor.file.impl.truncate(
             cursor.file.handle,
-            cursor.lastGoodFileOffset,
+            cursor.lastGoodFileOffset
           );
         }
         cursor.file.didScan = true; // Ensure this flag is set correctly
@@ -127,7 +127,7 @@ async function JSONLogFileScan(cursor: JSONLogFileCursor): Promise<ScanResult> {
           cursor.readBufStart,
           readLen,
           cursor.objectBuf,
-          cursor.objectBufOffset,
+          cursor.objectBufOffset
         );
         cursor.objectBufOffset += readLen;
         // if (progressCallback) {
@@ -141,7 +141,7 @@ async function JSONLogFileScan(cursor: JSONLogFileCursor): Promise<ScanResult> {
       ) {
         try {
           const text = textDecoder.decode(
-            cursor.objectBuf.subarray(0, cursor.objectBufOffset),
+            cursor.objectBuf.subarray(0, cursor.objectBufOffset)
           );
           pendingObjects.push(JSON.parse(text));
           cursor.lastGoodFileOffset += cursor.objectBufOffset + 1; // +1 for newline character
@@ -154,7 +154,7 @@ async function JSONLogFileScan(cursor: JSONLogFileCursor): Promise<ScanResult> {
             await cursor.file.impl.seek(cursor.file.handle, 0, 'end');
             await cursor.file.impl.truncate(
               cursor.file.handle,
-              cursor.lastGoodFileOffset,
+              cursor.lastGoodFileOffset
             );
           }
           cursor.file.didScan = true;
@@ -192,11 +192,11 @@ function appendBytes(
   srcOffset: number,
   srcLen: number,
   dst: Uint8Array,
-  dstOffset: number,
+  dstOffset: number
 ): Uint8Array {
   if (dstOffset + srcLen > dst.byteLength) {
     const newDst = new Uint8Array(
-      Math.ceil(((dstOffset + srcLen) * 2) / PAGE_SIZE) * PAGE_SIZE,
+      Math.ceil(((dstOffset + srcLen) * 2) / PAGE_SIZE) * PAGE_SIZE
     );
     newDst.set(dst);
     // cacheBufferForReuse(dst);
@@ -208,7 +208,7 @@ function appendBytes(
 
 async function JSONLogFileAppend(
   file: JSONLogFile,
-  entries: readonly ReadonlyJSONObject[],
+  entries: readonly ReadonlyJSONObject[]
 ): Promise<void> {
   assert(file.write, 'Attempting to write to a readonly log');
   // if (file.writePromise) {
@@ -224,7 +224,7 @@ async function JSONLogFileAppend(
   // }
   assert(
     file.didScan === true,
-    'Attempting to append to log before initial scan completed',
+    'Attempting to append to log before initial scan completed'
   );
   const filteredEntries: ReadonlyJSONObject[] = [];
   for (const e of entries) {

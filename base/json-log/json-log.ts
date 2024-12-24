@@ -33,7 +33,7 @@ export function startJSONLogWorkerIfNeeded(): Worker {
         import.meta.resolve('../../__file_worker/json-log.worker.ts'),
         {
           type: 'module',
-        },
+        }
       );
     } else {
       gWorker = new Worker('/__file_worker/app.js', {
@@ -51,7 +51,7 @@ const gPendingResolveFuncs = new Map<number, (v: WorkerFileResp) => void>();
 let gReqId = 0;
 
 function sendRequest<T extends WorkerFileReq>(
-  req: Omit<T, 'id'>,
+  req: Omit<T, 'id'>
 ): Promise<WorkerFileRespForReq<T>> {
   let resolve: (v: WorkerFileRespForReq<T>) => void;
   const promise = new Promise<WorkerFileRespForReq<T>>((res) => {
@@ -77,7 +77,7 @@ function handleResponse(event: MessageEvent<string>): void {
 
 export async function JSONLogFileOpen(
   filePath: string,
-  write = false,
+  write = false
 ): Promise<JSONLogFile> {
   return (
     await sendRequest<WorkerFileReqOpen>({
@@ -98,7 +98,7 @@ export async function JSONLogFileClose(file: JSONLogFile): Promise<void> {
 export type JSONLogFileCursor = number;
 
 export async function JSONLogFileStartCursor(
-  file: JSONLogFile,
+  file: JSONLogFile
 ): Promise<JSONLogFileCursor> {
   return (
     await sendRequest<WorkerFileReqCursor>({
@@ -110,7 +110,7 @@ export async function JSONLogFileStartCursor(
 
 export type JSONLogFileScanResult = [
   results: readonly ReadonlyJSONObject[],
-  done: boolean,
+  done: boolean
 ];
 const gPendingScanPromise = new Map<
   JSONLogFileCursor,
@@ -118,7 +118,7 @@ const gPendingScanPromise = new Map<
 >();
 
 export async function JSONLogFileScan(
-  cursor: JSONLogFileCursor,
+  cursor: JSONLogFileCursor
 ): Promise<[results: readonly ReadonlyJSONObject[], done: boolean]> {
   let promise = gPendingScanPromise.get(cursor);
   if (!promise) {
@@ -135,7 +135,7 @@ export async function JSONLogFileScan(
       sendRequest<WorkerFileReqScan>({
         type: 'scan',
         cursor,
-      }),
+      })
     );
   }
   return [resp.values, resp.done];
@@ -150,7 +150,7 @@ export async function JSONLogFileFlush(file: JSONLogFile): Promise<void> {
 
 export async function JSONLogFileAppend(
   file: JSONLogFile,
-  entries: readonly ReadonlyJSONObject[],
+  entries: readonly ReadonlyJSONObject[]
 ): Promise<void> {
   await sendRequest<WorkerFileReqAppend>({
     type: 'append',
@@ -170,7 +170,7 @@ export async function readTextFile(path: string): Promise<string | undefined> {
 
 export async function writeTextFile(
   path: string,
-  text: string,
+  text: string
 ): Promise<boolean> {
   return (
     await sendRequest<WorkerWriteTextFileReq>({
